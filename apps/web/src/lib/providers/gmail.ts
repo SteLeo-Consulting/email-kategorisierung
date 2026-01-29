@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { google, gmail_v1 } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
 import type { EmailMessage, LabelType } from '@/lib/shared';
 import {
   EmailProvider,
@@ -17,7 +18,7 @@ export class GmailProvider extends EmailProvider {
   readonly providerName = 'GMAIL';
   private gmail: gmail_v1.Gmail;
   private credentials: ProviderCredentials;
-  private oauth2Client: ReturnType<typeof google.auth.OAuth2.prototype>;
+  private oauth2Client: OAuth2Client;
 
   constructor(credentials: ProviderCredentials) {
     super();
