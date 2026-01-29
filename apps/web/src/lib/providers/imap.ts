@@ -104,8 +104,8 @@ export class IMAPProvider extends EmailProvider {
 
       return {
         messages,
-        nextPageToken: uids.length > maxResults ? String(maxResults) : undefined,
-        hasMore: uids.length > maxResults,
+        nextPageToken: uidArray.length > maxResults ? String(maxResults) : undefined,
+        hasMore: uidArray.length > maxResults,
       };
     } catch (error) {
       console.error('IMAP fetchMessages error:', error);
