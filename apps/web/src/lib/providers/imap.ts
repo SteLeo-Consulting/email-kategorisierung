@@ -69,7 +69,8 @@ export class IMAPProvider extends EmailProvider {
 
       // Limit results
       const maxResults = options.maxResults || 50;
-      const limitedUids = uids.slice(0, maxResults);
+      const uidArray = uids || [];
+      const limitedUids = uidArray.slice(0, maxResults);
 
       if (limitedUids.length > 0) {
         // Fetch message details
