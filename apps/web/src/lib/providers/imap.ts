@@ -128,7 +128,8 @@ export class IMAPProvider extends EmailProvider {
       const labels: LabelInfo[] = [];
 
       // List all mailboxes (folders)
-      for await (const mailbox of client.list()) {
+      const mailboxes = await client.list();
+      for (const mailbox of mailboxes) {
         labels.push({
           id: mailbox.path,
           name: mailbox.name,
