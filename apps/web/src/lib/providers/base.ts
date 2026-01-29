@@ -84,4 +84,14 @@ export abstract class EmailProvider {
    * Disconnect and cleanup
    */
   abstract disconnect(): Promise<void>;
+
+  /**
+   * Get or create a label by name
+   */
+  async getOrCreateLabel(name: string): Promise<LabelInfo> {
+    const labels = await this.getLabels();
+    const existing = labels.find((l) => l.name === name);
+    if (existing) return existing;
+    return this.createLabel(name);
+  }
 }
