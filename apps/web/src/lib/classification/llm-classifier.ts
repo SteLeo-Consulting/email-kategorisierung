@@ -2,7 +2,7 @@
 // LLM-Based Email Classifier (Optional)
 // =============================================================================
 
-import type { EmailMessage, ClassificationResult, CategoryCode, LLMProvider } from '@email-cat/shared';
+import type { EmailMessage, ClassificationResult, CategoryCode, LLMProvider } from '@/lib/shared';
 import { prisma } from '../prisma';
 
 interface LLMConfig {

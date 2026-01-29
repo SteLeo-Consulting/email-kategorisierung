@@ -8,7 +8,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/services/audit';
 import { createProviderFromConnection } from '@/lib/providers';
-import { DEFAULT_LABEL_NAMES } from '@email-cat/shared';
+import { DEFAULT_LABEL_NAMES } from '@/lib/shared';
 
 export const runtime = 'nodejs';
 

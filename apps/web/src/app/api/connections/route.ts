@@ -6,8 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { CreateIMAPCredentialSchema } from '@email-cat/shared';
-import { encrypt } from '@email-cat/shared';
+import { CreateIMAPCredentialSchema, encrypt } from '@/lib/shared';
 import { createAuditLog } from '@/lib/services/audit';
 
 export const runtime = 'nodejs';

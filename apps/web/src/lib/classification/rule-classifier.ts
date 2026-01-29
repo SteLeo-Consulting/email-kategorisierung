@@ -2,7 +2,7 @@
 // Rule-Based Email Classifier
 // =============================================================================
 
-import type { EmailMessage, ClassificationResult, CategoryCode, RuleType, RuleField } from '@email-cat/shared';
+import type { EmailMessage, ClassificationResult, CategoryCode, RuleType, RuleField } from '@/lib/shared';
 import { prisma } from '../prisma';
 
 interface Rule {
@@ -238,7 +238,7 @@ export class RuleBasedClassifier {
  * Create default rules for a user
  */
 export async function createDefaultRules(userId: string): Promise<void> {
-  const { DEFAULT_RULES } = await import('@email-cat/shared');
+  const { DEFAULT_RULES } = await import('@/lib/shared');
 
   // Get the user's categories
   const categories = await prisma.category.findMany({

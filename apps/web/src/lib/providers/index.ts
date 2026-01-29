@@ -2,9 +2,8 @@
 // Provider Factory and Exports
 // =============================================================================
 
-import { Provider } from '@email-cat/shared';
+import { Provider, decrypt } from '@/lib/shared';
 import { prisma } from '../prisma';
-import { decrypt } from '@email-cat/shared';
 import { EmailProvider, ProviderCredentials, IMAPCredentials } from './base';
 import { GmailProvider } from './gmail';
 import { OutlookProvider } from './outlook';
@@ -91,7 +90,7 @@ export async function updateConnectionTokens(
   connectionId: string,
   newCredentials: ProviderCredentials
 ): Promise<void> {
-  const { encrypt } = await import('@email-cat/shared');
+  const { encrypt } = await import('@/lib/shared');
 
   await prisma.oAuthToken.update({
     where: { connectionId },

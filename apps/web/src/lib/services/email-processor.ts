@@ -2,8 +2,8 @@
 // Email Processing Service
 // =============================================================================
 
-import type { ProcessingResult, EmailMessage, ClassificationResult } from '@email-cat/shared';
-import { PROCESSING_LIMITS } from '@email-cat/shared';
+import type { ProcessingResult, EmailMessage, ClassificationResult } from '@/lib/shared';
+import { PROCESSING_LIMITS } from '@/lib/shared';
 import { prisma } from '../prisma';
 import {
   createProviderFromConnection,

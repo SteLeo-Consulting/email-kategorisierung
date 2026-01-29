@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { ImapFlow, MailboxObject, FetchMessageObject } from 'imapflow';
-import type { EmailMessage, LabelType } from '@email-cat/shared';
+import type { EmailMessage, LabelType } from '@/lib/shared';
 import {
   EmailProvider,
   IMAPCredentials,

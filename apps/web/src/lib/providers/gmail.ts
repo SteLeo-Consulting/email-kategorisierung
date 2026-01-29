@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { google, gmail_v1 } from 'googleapis';
-import type { EmailMessage, LabelType } from '@email-cat/shared';
+import type { EmailMessage, LabelType } from '@/lib/shared';
 import {
   EmailProvider,
   ProviderCredentials,

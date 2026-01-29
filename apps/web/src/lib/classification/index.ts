@@ -2,8 +2,8 @@
 // Unified Classification Module
 // =============================================================================
 
-import type { EmailMessage, ClassificationResult, CategoryCode } from '@email-cat/shared';
-import { CLASSIFICATION_THRESHOLDS } from '@email-cat/shared';
+import type { EmailMessage, ClassificationResult, CategoryCode } from '@/lib/shared';
+import { CLASSIFICATION_THRESHOLDS } from '@/lib/shared';
 import { RuleBasedClassifier, createDefaultRules } from './rule-classifier';
 import { LLMClassifier } from './llm-classifier';
 import { prisma } from '../prisma';
@@ -141,7 +141,7 @@ export class EmailClassifier {
  * Initialize default categories for a new user
  */
 export async function createDefaultCategories(userId: string): Promise<void> {
-  const { DEFAULT_CATEGORIES } = await import('@email-cat/shared');
+  const { DEFAULT_CATEGORIES } = await import('@/lib/shared');
 
   for (const category of DEFAULT_CATEGORIES) {
     const existing = await prisma.category.findFirst({
@@ -218,7 +218,7 @@ export async function getLabelForClassification(
   }
 
   // Use default label name if no mapping exists
-  const { DEFAULT_LABEL_NAMES } = await import('@email-cat/shared');
+  const { DEFAULT_LABEL_NAMES } = await import('@/lib/shared');
   const defaultLabel = DEFAULT_LABEL_NAMES[result.category as CategoryCode];
 
   return {

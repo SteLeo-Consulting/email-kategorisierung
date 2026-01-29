@@ -2,7 +2,7 @@
 // Audit Service
 // =============================================================================
 
-import type { AuditAction } from '@email-cat/shared';
+import type { AuditAction } from '@/lib/shared';
 import { prisma } from '../prisma';
 
 export interface AuditLogEntry {

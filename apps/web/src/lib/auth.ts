@@ -2,7 +2,7 @@ import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import AzureADProvider from 'next-auth/providers/azure-ad';
 import { prisma } from './prisma';
-import { GMAIL_SCOPES, OUTLOOK_SCOPES } from '@email-cat/shared';
+import { GMAIL_SCOPES, OUTLOOK_SCOPES } from '@/lib/shared';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -74,7 +74,7 @@ export const authOptions: NextAuthOptions = {
         });
 
         // Import encryption functions dynamically to avoid issues with edge runtime
-        const { encrypt } = await import('@email-cat/shared');
+        const { encrypt } = await import('@/lib/shared');
 
         // Store OAuth tokens (encrypted)
         await prisma.oAuthToken.upsert({

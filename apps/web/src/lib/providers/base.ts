@@ -2,7 +2,7 @@
 // Base Provider Interface
 // =============================================================================
 
-import type { EmailMessage, ClassificationResult, LabelType } from '@email-cat/shared';
+import type { EmailMessage, ClassificationResult, LabelType } from '@/lib/shared';
 
 export interface ProviderCredentials {
   accessToken: string;

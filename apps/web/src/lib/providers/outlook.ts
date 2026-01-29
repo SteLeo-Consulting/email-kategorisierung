@@ -2,7 +2,7 @@
 // Outlook/Microsoft Graph Provider Implementation
 // =============================================================================
 
-import type { EmailMessage, LabelType } from '@email-cat/shared';
+import type { EmailMessage, LabelType } from '@/lib/shared';
 import {
   EmailProvider,
   ProviderCredentials,
