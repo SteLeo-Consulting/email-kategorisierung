@@ -1,0 +1,49 @@
+# GitHub Actions Fallback fuer Vercel Cron (Hobby Plan)
+# Dieses Workflow triggert die Email-Verarbeitung alle 5 Minuten
+
+name: Process Emails Cron
+
+on:
+  schedule:
+    # Alle 5 Minuten
+    # Hinweis: GitHub Actions garantiert keine exakte Ausfuehrungszeit
+    - cron: '*/5 * * * *'
+
+  # Erlaubt manuelle Ausfuehrung
+  workflow_dispatch:
+
+jobs:
+  process-emails:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Email Processing
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          echo "Triggering email processing at $(date)"
+
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            "$APP_URL/api/cron/process-emails")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+
+          if [ "$http_code" != "200" ]; then
+            echo "Error: Cron job failed with HTTP $http_code"
+            exit 1
+          fi
+
+          echo "Cron job completed successfully"
+
+      - name: Report Status
+        if: failure()
+        run: |
+          echo "::warning::Email processing cron job failed"
+          # Optional: Hier koennte eine Benachrichtigung (Slack, Email) erfolgen
