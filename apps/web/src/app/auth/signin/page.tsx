@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,7 +52,7 @@ export default function SignInPage() {
     setError('');
 
     try {
-      // First, authenticate with IMAP
+      // Authenticate with IMAP and create user/connection
       const imapRes = await fetch('/api/auth/imap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,19 +73,13 @@ export default function SignInPage() {
         return;
       }
 
-      // Then, create NextAuth session
-      const result = await signIn('imap', {
+      // Store user info in localStorage for session management
+      localStorage.setItem('user', JSON.stringify({
+        id: imapData.user.id,
         email: imapData.user.email,
-        userId: imapData.user.id,
+        name: imapData.user.name,
         connectionId: imapData.connection.id,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setError('Session konnte nicht erstellt werden');
-        setIsLoading(false);
-        return;
-      }
+      }));
 
       // Success! Redirect to dashboard
       router.push('/dashboard');
