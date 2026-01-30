@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx tsc:*)",
+      "Bash(timeout 30 npx next dev:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd direct IMAP login without OAuth requirement\n\n- Add IMAP authentication API endpoint with auto-detection for 20+ email providers\n- Replace OAuth-only login page with email/password form\n- Add CredentialsProvider to NextAuth for IMAP sessions\n- Support Gmail, GMX, Web.de, Outlook, Strato, 1&1, T-Online, and more\n- Auto-detect IMAP server settings from email domain\n- Show helpful hints for Gmail App-Password requirement\n- Add Alert UI component for error messages\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(npx vercel:*)",
+      "Bash(gh api:*)",
+      "Bash(git commit:*)",
+      "WebFetch(domain:api.github.com)"
+    ]
+  }
+}
