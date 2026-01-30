@@ -1,8 +1,10 @@
 {
+  "buildCommand": "NODE_OPTIONS='--max-old-space-size=3584' prisma generate && next build",
+  "framework": "nextjs",
   "crons": [
     {
       "path": "/api/cron/process-emails",
-      "schedule": "0 8 * * *"
+      "schedule": "*/5 * * * *"
     }
   ]
 }
