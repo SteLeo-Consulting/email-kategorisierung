@@ -1,32 +1,73 @@
 import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import AzureADProvider from 'next-auth/providers/azure-ad';
+import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from './prisma';
 import { GMAIL_SCOPES, OUTLOOK_SCOPES } from '@/lib/shared';
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          scope: ['openid', 'email', 'profile', ...GMAIL_SCOPES].join(' '),
-          access_type: 'offline',
-          prompt: 'consent',
-        },
+    // IMAP Credentials Provider - Allows login with any email
+    CredentialsProvider({
+      id: 'imap',
+      name: 'E-Mail',
+      credentials: {
+        email: { label: 'E-Mail', type: 'email' },
+        userId: { label: 'User ID', type: 'text' },
+        connectionId: { label: 'Connection ID', type: 'text' },
+      },
+      async authorize(credentials) {
+        // This is called after successful IMAP authentication
+        // The actual IMAP validation is done in /api/auth/imap
+        if (!credentials?.email || !credentials?.userId) {
+          return null;
+        }
+
+        // Verify user exists in database
+        const user = await prisma.user.findUnique({
+          where: { id: credentials.userId },
+        });
+
+        if (!user || user.email !== credentials.email) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        };
       },
     }),
-    AzureADProvider({
-      clientId: process.env.MICROSOFT_CLIENT_ID!,
-      clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
-      tenantId: 'common', // Allow personal and work accounts
-      authorization: {
-        params: {
-          scope: ['openid', 'email', 'profile', ...OUTLOOK_SCOPES].join(' '),
+    // Google OAuth (optional - only if configured)
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET &&
+        !process.env.GOOGLE_CLIENT_ID.includes('your-') ? [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        authorization: {
+          params: {
+            scope: ['openid', 'email', 'profile', ...GMAIL_SCOPES].join(' '),
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
-      },
-    }),
+      }),
+    ] : []),
+    // Azure AD OAuth (optional - only if configured)
+    ...(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET &&
+        !process.env.MICROSOFT_CLIENT_ID.includes('your-') ? [
+      AzureADProvider({
+        clientId: process.env.MICROSOFT_CLIENT_ID,
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+        tenantId: 'common',
+        authorization: {
+          params: {
+            scope: ['openid', 'email', 'profile', ...OUTLOOK_SCOPES].join(' '),
+          },
+        },
+      }),
+    ] : []),
   ],
   callbacks: {
     async signIn({ user, account }) {

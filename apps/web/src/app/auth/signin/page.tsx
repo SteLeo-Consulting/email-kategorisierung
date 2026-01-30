@@ -1,14 +1,103 @@
 'use client';
 
+import { useState } from 'react';
 import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Cloud } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, Mail, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function SignInPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [imapHost, setImapHost] = useState('');
+  const [imapPort, setImapPort] = useState('993');
+  const [detectedServer, setDetectedServer] = useState<string | null>(null);
+
+  // Auto-detect IMAP server when email changes
+  const handleEmailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    setError('');
+    setDetectedServer(null);
+
+    // Detect IMAP server for the domain
+    if (newEmail.includes('@')) {
+      try {
+        const res = await fetch(`/api/auth/imap?email=${encodeURIComponent(newEmail)}`);
+        const data = await res.json();
+        if (data.detected && data.host) {
+          setDetectedServer(data.host);
+          if (!showAdvanced) {
+            setImapHost(data.host);
+            setImapPort(String(data.port));
+          }
+        }
+      } catch {
+        // Ignore detection errors
+      }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // First, authenticate with IMAP
+      const imapRes = await fetch('/api/auth/imap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          host: showAdvanced && imapHost ? imapHost : undefined,
+          port: showAdvanced && imapPort ? parseInt(imapPort) : undefined,
+          secure: true,
+        }),
+      });
+
+      const imapData = await imapRes.json();
+
+      if (!imapRes.ok) {
+        setError(imapData.error || 'Anmeldung fehlgeschlagen');
+        setIsLoading(false);
+        return;
+      }
+
+      // Then, create NextAuth session
+      const result = await signIn('imap', {
+        email: imapData.user.email,
+        userId: imapData.user.id,
+        connectionId: imapData.connection.id,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError('Session konnte nicht erstellt werden');
+        setIsLoading(false);
+        return;
+      }
+
+      // Success! Redirect to dashboard
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Ein Fehler ist aufgetreten');
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Email Kategorisierung</CardTitle>
@@ -17,57 +106,126 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground text-center">
-            Melde dich mit deinem E-Mail-Provider an, um zu starten.
-          </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-Mail-Adresse</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="deine@email.de"
+                  value={email}
+                  onChange={handleEmailChange}
+                  className="pl-10"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              {detectedServer && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Server erkannt: {detectedServer}
+                </p>
+              )}
+            </div>
 
-          <div className="space-y-3">
-            <Button
-              variant="outline"
-              className="w-full h-12"
-              onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
-            >
-              <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-              Mit Gmail anmelden
-            </Button>
+            <div className="space-y-2">
+              <Label htmlFor="password">Passwort</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Dein E-Mail-Passwort oder App-Passwort"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isLoading}
+              />
+              {email.includes('gmail') && (
+                <p className="text-xs text-amber-600">
+                  Fuer Gmail brauchst du ein{' '}
+                  <a
+                    href="https://myaccount.google.com/apppasswords"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-medium"
+                  >
+                    App-Passwort
+                  </a>
+                </p>
+              )}
+            </div>
 
-            <Button
-              variant="outline"
-              className="w-full h-12"
-              onClick={() => signIn('azure-ad', { callbackUrl: '/dashboard' })}
+            {/* Advanced settings toggle */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              <svg className="w-5 h-5 mr-3" viewBox="0 0 23 23">
-                <path fill="#f35325" d="M1 1h10v10H1z" />
-                <path fill="#81bc06" d="M12 1h10v10H12z" />
-                <path fill="#05a6f0" d="M1 12h10v10H1z" />
-                <path fill="#ffba08" d="M12 12h10v10H12z" />
-              </svg>
-              Mit Microsoft anmelden
+              {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              Erweiterte Einstellungen
+            </button>
+
+            {showAdvanced && (
+              <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
+                <div className="space-y-2">
+                  <Label htmlFor="imapHost">IMAP-Server</Label>
+                  <Input
+                    id="imapHost"
+                    type="text"
+                    placeholder="z.B. imap.gmail.com"
+                    value={imapHost}
+                    onChange={(e) => setImapHost(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="imapPort">Port</Label>
+                  <Input
+                    id="imapPort"
+                    type="number"
+                    placeholder="993"
+                    value={imapPort}
+                    onChange={(e) => setImapPort(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button type="submit" className="w-full h-12" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verbinde...
+                </>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Anmelden
+                </>
+              )}
             </Button>
+          </form>
+
+          <div className="space-y-3 pt-2">
+            <p className="text-xs text-center text-muted-foreground">
+              Funktioniert mit Gmail, GMX, Web.de, Outlook, Strato, 1&1 und allen anderen E-Mail-Anbietern
+            </p>
           </div>
 
           <Separator className="my-4" />
 
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-3">
-              Du kannst auch IMAP-Konten (z.B. Strato) nach der Anmeldung hinzufuegen.
+          <div className="text-center space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Dein Passwort wird verschluesselt gespeichert und nur zur E-Mail-Abfrage verwendet.
             </p>
           </div>
         </CardContent>
