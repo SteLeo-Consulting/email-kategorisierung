@@ -219,6 +219,7 @@ enum RuleType {
   SENDER
   SUBJECT
   COMBINED
+  LLM
 }
 
 enum RuleField {

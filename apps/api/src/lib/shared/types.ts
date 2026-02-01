@@ -31,7 +31,7 @@ export const CategoryCodeEnum = z.enum([
 ]);
 export type CategoryCode = z.infer<typeof CategoryCodeEnum>;
 
-export const RuleTypeEnum = z.enum(['KEYWORD', 'REGEX', 'SENDER', 'SUBJECT', 'COMBINED']);
+export const RuleTypeEnum = z.enum(['KEYWORD', 'REGEX', 'SENDER', 'SUBJECT', 'COMBINED', 'LLM']);
 export type RuleType = z.infer<typeof RuleTypeEnum>;
 
 export const RuleFieldEnum = z.enum(['FROM', 'TO', 'SUBJECT', 'BODY', 'ANY']);

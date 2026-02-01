@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/table';
 import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
 
 interface AuditLog {
   id: string;
@@ -33,14 +34,17 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const userEmail = useUserEmail();
 
   const fetchLogs = async () => {
+    if (!userEmail) return;
+
     try {
-      const res = await fetch(`/api/audit?page=${page}&pageSize=30`);
+      const res = await fetch(buildApiUrl(`/api/audit?page=${page}&pageSize=30`, userEmail));
       if (res.ok) {
         const data = await res.json();
-        setLogs(data.logs);
-        setTotalPages(data.pagination.totalPages);
+        setLogs(data.logs || []);
+        setTotalPages(data.pagination?.totalPages || 1);
       }
     } catch (error) {
       console.error('Failed to fetch audit logs:', error);
@@ -50,15 +54,17 @@ export default function AuditPage() {
   };
 
   useEffect(() => {
-    fetchLogs();
-  }, [page]);
+    if (userEmail) {
+      fetchLogs();
+    }
+  }, [page, userEmail]);
 
   const getActionBadge = (action: string) => {
     if (action.includes('CREATED')) {
       return <Badge variant="success">Erstellt</Badge>;
     }
     if (action.includes('DELETED')) {
-      return <Badge variant="destructive">Geloescht</Badge>;
+      return <Badge variant="destructive">Gelöscht</Badge>;
     }
     if (action.includes('ERROR') || action.includes('FAILED')) {
       return <Badge variant="destructive">Fehler</Badge>;
@@ -76,7 +82,7 @@ export default function AuditPage() {
       .replace(/^\w/, (c) => c.toUpperCase());
   };
 
-  if (loading) {
+  if (loading || !userEmail) {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -90,7 +96,7 @@ export default function AuditPage() {
         <div>
           <h1 className="text-3xl font-bold">Audit Log</h1>
           <p className="text-muted-foreground">
-            Protokoll aller Systemaktivitaeten
+            Protokoll aller Systemaktivitäten
           </p>
         </div>
         <Button variant="outline" onClick={fetchLogs}>
@@ -101,7 +107,7 @@ export default function AuditPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Aktivitaeten</CardTitle>
+          <CardTitle>Aktivitäten</CardTitle>
           <CardDescription>
             Alle Aktionen im System werden hier protokolliert
           </CardDescription>

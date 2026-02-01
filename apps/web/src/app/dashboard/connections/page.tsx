@@ -138,32 +138,45 @@ export default function ConnectionsPage() {
     }
   };
 
-  const handleProcess = async (id: string) => {
+  const handleProcess = async (id: string, reprocessAll = false) => {
     try {
-      toast({ title: 'Verarbeitung gestartet...' });
+      toast({
+        title: reprocessAll ? 'Verarbeite alle E-Mails...' : 'Verarbeitung gestartet...',
+        description: 'Dies kann einen Moment dauern.'
+      });
 
       const res = await fetch(buildApiUrl(`/api/connections/${id}/process`, userEmail), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ maxEmails: 10 }),
+        body: JSON.stringify({
+          maxEmails: reprocessAll ? 100 : 50,
+          reprocessAll
+        }),
       });
 
       const data = await res.json();
       if (data.success) {
+        const { messagesProcessed, messagesLabeled, messagesReview } = data.result;
         toast({
           title: 'Verarbeitung abgeschlossen',
-          description: `${data.result.messagesProcessed} E-Mails verarbeitet, ${data.result.messagesLabeled} gelabelt`,
+          description: messagesProcessed === 0
+            ? 'Keine neuen E-Mails gefunden.'
+            : `${messagesProcessed} E-Mails verarbeitet, ${messagesLabeled} gelabelt, ${messagesReview} zur Prüfung`,
         });
         fetchConnections();
       } else {
         toast({
           title: 'Verarbeitung fehlgeschlagen',
-          description: data.error,
+          description: data.error || 'Unbekannter Fehler',
           variant: 'destructive',
         });
       }
     } catch (error) {
-      toast({ title: 'Fehler bei der Verarbeitung', variant: 'destructive' });
+      toast({
+        title: 'Fehler bei der Verarbeitung',
+        description: 'Netzwerkfehler - bitte erneut versuchen',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -346,10 +359,18 @@ export default function ConnectionsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleProcess(conn.id)}
-                          title="Jetzt verarbeiten"
+                          onClick={() => handleProcess(conn.id, false)}
+                          title="Neue E-Mails verarbeiten"
                         >
                           <Play className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleProcess(conn.id, true)}
+                          title="Alle E-Mails erneut verarbeiten"
+                        >
+                          <RefreshCw className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"

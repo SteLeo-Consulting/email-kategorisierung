@@ -38,7 +38,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     // Parse options from body
     const body = await request.json().catch(() => ({}));
-    const { maxEmails = 10, dryRun = false } = body;
+    const { maxEmails = 50, dryRun = false, reprocessAll = false } = body;
+
+    // If reprocessAll, reset lastSyncAt to null to fetch all emails
+    if (reprocessAll) {
+      await prisma.connection.update({
+        where: { id: params.id },
+        data: { lastSyncAt: null },
+      });
+    }
 
     const processor = new EmailProcessor(params.id, { maxEmails, dryRun });
     const result = await processor.process();
