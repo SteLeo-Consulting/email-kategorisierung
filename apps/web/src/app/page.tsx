@@ -1,13 +1,24 @@
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+'use client';
 
-export default async function HomePage() {
-  const session = await getServerSession(authOptions);
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-  if (session) {
-    redirect('/dashboard');
-  }
+export default function HomePage() {
+  const router = useRouter();
 
-  redirect('/auth/signin');
+  useEffect(() => {
+    // Check if user is logged in via localStorage
+    const user = localStorage.getItem('user');
+    if (user) {
+      router.push('/dashboard');
+    } else {
+      router.push('/auth/signin');
+    }
+  }, [router]);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+    </div>
+  );
 }
