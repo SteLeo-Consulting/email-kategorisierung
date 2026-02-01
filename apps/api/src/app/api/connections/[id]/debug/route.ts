@@ -147,6 +147,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // List ALL folders
+    const allFolders = await client.list();
+    const folderList = allFolders.map((f: any) => ({
+      path: f.path,
+      name: f.name,
+      flags: f.flags,
+      specialUse: f.specialUse,
+    }));
+
     await client.logout();
 
     return NextResponse.json({
@@ -167,6 +176,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       fetchMethod,
       fetchErrors: errors,
       sampleMessages: messages,
+      allFolders: folderList,
     });
   } catch (error: any) {
     return NextResponse.json({
