@@ -230,10 +230,10 @@ export class IMAPProvider extends EmailProvider {
         // Re-open INBOX (mailbox may have been changed by create)
         await client.mailboxOpen('INBOX');
 
-        // Copy message to the target folder
-        console.log(`[IMAP] Copying message UID ${uid} to folder "${labelId}"`);
-        await client.messageCopy([uid], labelId, { uid: true });
-        console.log(`[IMAP] Message copied successfully to "${labelId}"`);
+        // MOVE message to the target folder (not copy)
+        console.log(`[IMAP] Moving message UID ${uid} to folder "${labelId}"`);
+        await client.messageMove([uid], labelId, { uid: true });
+        console.log(`[IMAP] Message moved successfully to "${labelId}"`);
       } else {
         // Set a custom flag/keyword
         await client.messageFlagsAdd([uid], [labelId], { uid: true });
