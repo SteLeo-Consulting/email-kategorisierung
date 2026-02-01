@@ -1,15 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Standalone output for smaller builds
-  output: 'standalone',
-  // External packages to reduce bundle
-  serverExternalPackages: ['@prisma/client', 'imapflow'],
-  // Reduce memory usage during build
-  swcMinify: true,
-  // Disable source maps in production to reduce memory
-  productionBrowserSourceMaps: false,
-  // Disable TypeScript type checking during build (handled separately)
+  // Disable TypeScript type checking during build
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -21,34 +13,15 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Optimize webpack for lower memory usage
-  webpack: (config, { isServer, dev }) => {
-    // Only optimize in production
-    if (!dev) {
-      config.optimization = {
-        ...config.optimization,
-        moduleIds: 'deterministic',
-        minimize: true,
-        // Disable some memory-intensive optimizations
-        splitChunks: isServer ? false : {
-          chunks: 'async',
-          minSize: 30000,
-          maxAsyncRequests: 5,
-          maxInitialRequests: 3,
-        },
-      };
-
-      // Reduce parallelism to save memory
-      config.parallelism = 1;
-
-      // Reduce cache size
-      config.cache = {
-        type: 'memory',
-        maxMemoryGenerations: 1,
-      };
-    }
-
-    return config;
+  // Rewrite API calls to backend
+  async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${apiUrl}/api/:path*`,
+      },
+    ];
   },
 };
 
