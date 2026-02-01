@@ -3,6 +3,7 @@
 // =============================================================================
 
 import type { EmailMessage, ClassificationResult, CategoryCode, LLMProvider } from '@/lib/shared';
+import { decrypt } from '@/lib/shared';
 import { prisma } from '../prisma';
 
 interface LLMConfig {
@@ -53,29 +54,89 @@ export class LLMClassifier {
   }
 
   /**
-   * Check if LLM classification is enabled
+   * Check if LLM classification is enabled for a user
+   * Checks both environment variables and database providers
    */
   static isEnabled(): boolean {
-    const provider = process.env.LLM_PROVIDER as LLMProvider;
-    return provider && provider !== 'none' && !!process.env.LLM_API_KEY;
+    // Check environment variables first
+    const envProvider = process.env.LLM_PROVIDER as LLMProvider;
+    if (envProvider && envProvider !== 'none' && process.env.LLM_API_KEY) {
+      return true;
+    }
+    // Will be checked async via hasDbProvider
+    return true; // Return true to allow DB check in fromEnv
   }
 
   /**
-   * Create an LLM classifier from environment config
+   * Check if user has a DB-configured LLM provider
+   */
+  static async hasDbProvider(userId: string): Promise<boolean> {
+    const provider = await prisma.lLMProvider.findFirst({
+      where: {
+        userId,
+        isDefault: true,
+        status: { not: 'ERROR' },
+      },
+    });
+    return !!provider;
+  }
+
+  /**
+   * Create an LLM classifier from environment config or database
    */
   static fromEnv(userId: string): LLMClassifier | null {
-    const provider = process.env.LLM_PROVIDER as LLMProvider;
-    const apiKey = process.env.LLM_API_KEY;
+    // Check environment variables first
+    const envProvider = process.env.LLM_PROVIDER as LLMProvider;
+    const envApiKey = process.env.LLM_API_KEY;
 
-    if (!provider || provider === 'none' || !apiKey) {
-      return null;
+    if (envProvider && envProvider !== 'none' && envApiKey) {
+      return new LLMClassifier(userId, {
+        provider: envProvider,
+        apiKey: envApiKey,
+        model: process.env.LLM_MODEL,
+      });
     }
 
+    // Return a placeholder that will load from DB
     return new LLMClassifier(userId, {
-      provider,
-      apiKey,
-      model: process.env.LLM_MODEL,
+      provider: 'mistral' as LLMProvider,
+      apiKey: '',
+      model: '',
     });
+  }
+
+  /**
+   * Load LLM config from database if not set
+   */
+  private async ensureConfig(): Promise<boolean> {
+    if (this.config.apiKey) {
+      return true;
+    }
+
+    // Try to load from database
+    const dbProvider = await prisma.lLMProvider.findFirst({
+      where: {
+        userId: this.userId,
+        isDefault: true,
+        status: { not: 'ERROR' },
+      },
+    });
+
+    if (!dbProvider) {
+      return false;
+    }
+
+    try {
+      this.config = {
+        provider: dbProvider.provider.toLowerCase() as LLMProvider,
+        apiKey: decrypt(dbProvider.apiKey),
+        model: dbProvider.model,
+      };
+      return true;
+    } catch (error) {
+      console.error('Failed to decrypt LLM API key:', error);
+      return false;
+    }
   }
 
   /**
@@ -100,6 +161,13 @@ export class LLMClassifier {
    * Classify an email message using LLM
    */
   async classify(message: EmailMessage): Promise<ClassificationResult | null> {
+    // Ensure we have a valid config
+    const hasConfig = await this.ensureConfig();
+    if (!hasConfig) {
+      console.log('No LLM provider configured, skipping LLM classification');
+      return null;
+    }
+
     if (this.categories.length === 0) {
       await this.loadCategories();
     }
@@ -115,6 +183,7 @@ export class LLMClassifier {
       .replace('{categories}', categoriesText);
 
     try {
+      console.log(`[LLM] Classifying message with ${this.config.provider}/${this.config.model}`);
       const response = await this.callLLM(prompt);
       const parsed = this.parseResponse(response);
 
@@ -129,6 +198,7 @@ export class LLMClassifier {
         return null;
       }
 
+      console.log(`[LLM] Classified as ${parsed.category} with confidence ${parsed.confidence}`);
       return {
         category: parsed.category as CategoryCode,
         confidence: Math.min(1, Math.max(0, parsed.confidence)),
@@ -151,6 +221,10 @@ export class LLMClassifier {
         return this.callOpenAI(prompt);
       case 'anthropic':
         return this.callAnthropic(prompt);
+      case 'mistral':
+        return this.callMistral(prompt);
+      case 'groq':
+        return this.callGroq(prompt);
       default:
         throw new Error(`Unsupported LLM provider: ${this.config.provider}`);
     }
@@ -226,6 +300,82 @@ export class LLMClassifier {
 
     const data = await response.json();
     return data.content[0]?.text || '';
+  }
+
+  /**
+   * Call Mistral API
+   */
+  private async callMistral(prompt: string): Promise<string> {
+    const model = this.config.model || 'mistral-small-latest';
+
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a precise email classifier. Always respond with valid JSON.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 150,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Mistral API error: ${error}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || '';
+  }
+
+  /**
+   * Call Groq API
+   */
+  private async callGroq(prompt: string): Promise<string> {
+    const model = this.config.model || 'llama-3.1-8b-instant';
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a precise email classifier. Always respond with valid JSON.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 150,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Groq API error: ${error}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || '';
   }
 
   /**
