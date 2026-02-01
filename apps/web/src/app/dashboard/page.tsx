@@ -12,7 +12,9 @@ import {
   CheckCircle,
   Clock,
   RefreshCw,
+  Play,
 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
@@ -47,8 +49,10 @@ interface Stats {
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const userEmail = useUserEmail();
   const { t } = useSettings();
+  const { toast } = useToast();
 
   const fetchStats = async () => {
     if (!userEmail) {
@@ -74,6 +78,59 @@ export default function DashboardPage() {
       fetchStats();
     }
   }, [userEmail]);
+
+  const handleProcessAll = async () => {
+    if (!userEmail || !stats?.connections.active) {
+      toast({
+        title: t('dashboard.noActiveConnections'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      // Fetch connections first
+      const connectionsRes = await fetch(buildApiUrl('/api/connections', userEmail));
+      if (!connectionsRes.ok) throw new Error('Failed to fetch connections');
+
+      const { connections } = await connectionsRes.json();
+      const activeConnections = connections.filter((c: any) => c.status === 'ACTIVE');
+
+      let totalProcessed = 0;
+      let totalLabeled = 0;
+
+      // Process each active connection
+      for (const conn of activeConnections) {
+        const res = await fetch(buildApiUrl(`/api/connections/${conn.id}/process`, userEmail), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ maxEmails: 50 }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            totalProcessed += data.result.messagesProcessed;
+            totalLabeled += data.result.messagesLabeled;
+          }
+        }
+      }
+
+      toast({
+        title: t('connections.processingComplete'),
+        description: `${totalProcessed} ${t('connections.emailsProcessed')}, ${totalLabeled} ${t('connections.labeled')}`,
+      });
+      fetchStats();
+    } catch (error) {
+      toast({
+        title: t('connections.processingFailed'),
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -234,9 +291,20 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle>{t('dashboard.quickActions')}</CardTitle>
         </CardHeader>
-        <CardContent className="flex gap-3">
+        <CardContent className="flex flex-wrap gap-3">
+          <Button
+            onClick={handleProcessAll}
+            disabled={processing || !stats?.connections.active}
+          >
+            {processing ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            {processing ? t('dashboard.processingRunning') : t('dashboard.runProcessing')}
+          </Button>
           <Link href="/dashboard/connections">
-            <Button>
+            <Button variant="outline">
               <LinkIcon className="h-4 w-4 mr-2" />
               {t('dashboard.addConnection')}
             </Button>

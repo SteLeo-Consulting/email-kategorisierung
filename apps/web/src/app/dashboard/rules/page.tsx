@@ -209,6 +209,7 @@ export default function RulesPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          categoryId: form.categoryId, // Allow category change
           name: form.name,
           type: form.type,
           field: form.field,
@@ -220,7 +221,7 @@ export default function RulesPage() {
       });
 
       if (res.ok) {
-        toast({ title: 'Regel aktualisiert' });
+        toast({ title: t('rules.ruleUpdated') });
         setEditingRule(null);
         setForm({
           categoryId: '',
@@ -237,15 +238,14 @@ export default function RulesPage() {
       } else {
         const error = await res.json();
         toast({
-          title: 'Fehler',
-          description: error.error || 'Regel konnte nicht aktualisiert werden',
+          title: t('error'),
+          description: error.error,
           variant: 'destructive',
         });
       }
     } catch (error) {
       toast({
-        title: 'Fehler',
-        description: 'Netzwerkfehler',
+        title: t('error'),
         variant: 'destructive',
       });
     }
@@ -293,62 +293,51 @@ export default function RulesPage() {
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{editingRule ? 'Regel bearbeiten' : 'Neue Regel erstellen'}</DialogTitle>
+              <DialogTitle>{editingRule ? t('rules.editRule') : t('rules.createRule')}</DialogTitle>
               <DialogDescription>
                 {editingRule
-                  ? `Bearbeite die Regel "${editingRule.name}"`
-                  : 'Definiere ein Muster zur automatischen Kategorisierung'}
+                  ? `${t('rules.editRuleDesc')} "${editingRule.name}"`
+                  : t('rules.createRuleDesc')}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Kategorie</Label>
-                {editingRule ? (
-                  <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: editingRule.category.color }}
-                    />
-                    <span className="text-muted-foreground">{editingRule.category.name}</span>
-                    <span className="text-xs text-muted-foreground ml-auto">(nicht änderbar)</span>
-                  </div>
-                ) : (
-                  <Select
-                    value={form.categoryId}
-                    onValueChange={(v) => setForm({ ...form, categoryId: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Kategorie wählen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: cat.color }}
-                            />
-                            {cat.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                <Label>{t('rules.category')}</Label>
+                <Select
+                  value={form.categoryId}
+                  onValueChange={(v) => setForm({ ...form, categoryId: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('rules.selectCategory')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: cat.color }}
+                          />
+                          {cat.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Regelname</Label>
+                <Label>{t('rules.ruleName')}</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="z.B. Rechnung im Betreff"
+                  placeholder={t('rules.ruleNamePlaceholder')}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Regeltyp</Label>
+                  <Label>{t('rules.ruleType')}</Label>
                   <Select
                     value={form.type}
                     onValueChange={(v) => setForm({ ...form, type: v })}
@@ -359,14 +348,14 @@ export default function RulesPage() {
                     <SelectContent>
                       <SelectItem value="KEYWORD">Keyword</SelectItem>
                       <SelectItem value="REGEX">Regex</SelectItem>
-                      <SelectItem value="SENDER">Absender</SelectItem>
-                      <SelectItem value="LLM">LLM (KI-basiert)</SelectItem>
+                      <SelectItem value="SENDER">{t('rules.sender')}</SelectItem>
+                      <SelectItem value="LLM">LLM (AI)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Feld</Label>
+                  <Label>{t('rules.field')}</Label>
                   <Select
                     value={form.field}
                     onValueChange={(v) => setForm({ ...form, field: v })}
@@ -375,38 +364,38 @@ export default function RulesPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ANY">Alle Felder</SelectItem>
-                      <SelectItem value="FROM">Absender</SelectItem>
-                      <SelectItem value="SUBJECT">Betreff</SelectItem>
-                      <SelectItem value="BODY">Inhalt</SelectItem>
+                      <SelectItem value="ANY">{t('rules.allFields')}</SelectItem>
+                      <SelectItem value="FROM">{t('rules.sender')}</SelectItem>
+                      <SelectItem value="SUBJECT">{t('rules.subject')}</SelectItem>
+                      <SelectItem value="BODY">{t('rules.content')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Muster / Beschreibung</Label>
+                <Label>{t('rules.patternDesc')}</Label>
                 <Input
                   value={form.pattern}
                   onChange={(e) => setForm({ ...form, pattern: e.target.value })}
                   placeholder={
                     form.type === 'LLM'
-                      ? 'z.B. E-Mails die eine Rechnung oder Zahlungsaufforderung enthalten'
+                      ? t('rules.llmPlaceholder')
                       : form.type === 'REGEX'
-                      ? 'z.B. (rechnung|invoice)'
-                      : 'z.B. rechnung'
+                      ? t('rules.regexPlaceholder')
+                      : t('rules.keywordPlaceholder')
                   }
                 />
                 {form.type === 'LLM' && (
                   <p className="text-xs text-muted-foreground">
-                    Beschreibe in natürlicher Sprache, welche E-Mails erkannt werden sollen
+                    {t('rules.llmHint')}
                   </p>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Priorität (0-100)</Label>
+                  <Label>{t('rules.priority')} (0-100)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -419,7 +408,7 @@ export default function RulesPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Konfidenz (0-1)</Label>
+                  <Label>{t('rules.confidence')} (0-1)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -439,21 +428,21 @@ export default function RulesPage() {
                     checked={form.caseSensitive}
                     onCheckedChange={(v) => setForm({ ...form, caseSensitive: v })}
                   />
-                  <Label>Groß-/Kleinschreibung beachten</Label>
+                  <Label>{t('rules.caseSensitive')}</Label>
                 </div>
               )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={closeDialog}>
-                Abbrechen
+                {t('cancel')}
               </Button>
               {editingRule ? (
-                <Button onClick={handleUpdate} disabled={!form.name || !form.pattern}>
-                  Speichern
+                <Button onClick={handleUpdate} disabled={!form.categoryId || !form.name || !form.pattern}>
+                  {t('save')}
                 </Button>
               ) : (
                 <Button onClick={handleCreate} disabled={!form.categoryId || !form.name || !form.pattern}>
-                  Erstellen
+                  {t('create')}
                 </Button>
               )}
             </DialogFooter>
@@ -463,9 +452,9 @@ export default function RulesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Aktive Regeln ({rules.length})</CardTitle>
+          <CardTitle>{t('rules.activeRules')} ({rules.length})</CardTitle>
           <CardDescription>
-            Regeln werden nach Priorität absteigend angewendet
+            {t('rules.rulesApplied')}
           </CardDescription>
         </CardHeader>
         <CardContent>

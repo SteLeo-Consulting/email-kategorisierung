@@ -157,7 +157,8 @@ export const CreateRuleSchema = z.object({
   confidence: z.number().min(0).max(1).optional(),
 });
 
-export const UpdateRuleSchema = CreateRuleSchema.partial().omit({ categoryId: true });
+// Allow all fields including categoryId to be updated (for reassigning rules to different categories)
+export const UpdateRuleSchema = CreateRuleSchema.partial();
 
 export type CreateRuleInput = z.infer<typeof CreateRuleSchema>;
 export type UpdateRuleInput = z.infer<typeof UpdateRuleSchema>;
