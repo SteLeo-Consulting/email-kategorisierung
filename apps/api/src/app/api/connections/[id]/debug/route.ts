@@ -79,67 +79,71 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     console.log('[DEBUG] All UIDs:', uidArray);
     console.log('[DEBUG] Sorted UIDs to fetch:', sortedUids);
 
+    // Fetch using sequence numbers instead of UIDs
+    let fetchMethod = 'unknown';
+    const errors: string[] = [];
+
     if (sortedUids.length > 0) {
+      // Method 1: Try using fetch with UID range as string "uid1:uid2"
       try {
-        // ImapFlow fetch expects a string range or array - try string format
-        const uidRangeStr = sortedUids.join(',');
-        console.log('[DEBUG] Fetching UIDs as string:', uidRangeStr);
+        fetchMethod = 'uidRange';
+        const range = `${sortedUids[sortedUids.length - 1]}:${sortedUids[0]}`;
+        for await (const msg of client.fetch(range, { uid: true, envelope: true, flags: true })) {
+          messages.push({
+            uid: msg.uid,
+            seq: msg.seq,
+            subject: msg.envelope?.subject,
+            from: msg.envelope?.from?.[0]?.address,
+            date: msg.envelope?.date,
+            flags: msg.flags ? Array.from(msg.flags) : [],
+          });
+        }
+      } catch (e: any) {
+        errors.push(`Method 1 (uidRange): ${e.message}`);
+      }
 
-        // Also try fetching just one UID to see if it works
-        const testUid = sortedUids[0];
-        let singleFetchWorked = false;
-
-        // Try single UID first
+      // Method 2: If Method 1 failed, try with sequence numbers (1:* means all)
+      if (messages.length === 0) {
         try {
-          for await (const msg of client.fetch(String(testUid), {
-            uid: true,
-            envelope: true,
-            flags: true,
-          })) {
-            console.log('[DEBUG] Single fetch got message:', msg.uid);
-            singleFetchWorked = true;
+          fetchMethod = 'sequenceAll';
+          // Fetch last 10 messages by sequence number
+          const totalMessages = mailboxStatus.messages || 0;
+          const startSeq = Math.max(1, totalMessages - 9);
+          const range = `${startSeq}:*`;
+
+          for await (const msg of client.fetch(range, { envelope: true, flags: true }, { uid: false })) {
             messages.push({
               uid: msg.uid,
+              seq: msg.seq,
               subject: msg.envelope?.subject,
               from: msg.envelope?.from?.[0]?.address,
               date: msg.envelope?.date,
               flags: msg.flags ? Array.from(msg.flags) : [],
             });
           }
-        } catch (singleErr: any) {
-          console.log('[DEBUG] Single fetch failed:', singleErr.message);
+        } catch (e: any) {
+          errors.push(`Method 2 (sequenceAll): ${e.message}`);
         }
+      }
 
-        // If single worked, try the rest
-        if (singleFetchWorked && sortedUids.length > 1) {
-          for (const uid of sortedUids.slice(1)) {
-            try {
-              for await (const msg of client.fetch(String(uid), {
-                uid: true,
-                envelope: true,
-                flags: true,
-              })) {
-                messages.push({
-                  uid: msg.uid,
-                  subject: msg.envelope?.subject,
-                  from: msg.envelope?.from?.[0]?.address,
-                  date: msg.envelope?.date,
-                  flags: msg.flags ? Array.from(msg.flags) : [],
-                });
-              }
-            } catch {
-              // Skip failed UIDs
-            }
+      // Method 3: Use fetchOne for a single message
+      if (messages.length === 0) {
+        try {
+          fetchMethod = 'fetchOne';
+          const oneMsg = await client.fetchOne('*', { envelope: true, flags: true });
+          if (oneMsg) {
+            messages.push({
+              uid: oneMsg.uid,
+              seq: oneMsg.seq,
+              subject: oneMsg.envelope?.subject,
+              from: oneMsg.envelope?.from?.[0]?.address,
+              date: oneMsg.envelope?.date,
+              flags: oneMsg.flags ? Array.from(oneMsg.flags) : [],
+            });
           }
+        } catch (e: any) {
+          errors.push(`Method 3 (fetchOne): ${e.message}`);
         }
-      } catch (fetchError: any) {
-        console.error('[DEBUG] Fetch error:', fetchError);
-        return NextResponse.json({
-          error: 'Fetch failed',
-          fetchError: fetchError.message,
-          sortedUids,
-          uidArray,
-        }, { status: 500 });
       }
     }
 
@@ -160,6 +164,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       allUids: uidArray,
       sortedUids,
       unseenUids: unseenUids?.length || 0,
+      fetchMethod,
+      fetchErrors: errors,
       sampleMessages: messages,
     });
   } catch (error: any) {
