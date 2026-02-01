@@ -61,55 +61,60 @@ export class IMAPProvider extends EmailProvider {
         searchCriteria.since = options.since;
       }
 
-      // Search for messages
-      const uids = await client.search(
-        Object.keys(searchCriteria).length > 0 ? searchCriteria : { all: true },
-        { uid: true }
-      );
+      // Get mailbox status to know total count
+      const mailboxStatus = await client.status('INBOX', { messages: true });
+      const totalMessages = mailboxStatus.messages || 0;
 
-      // Limit results - take the LATEST emails (highest UIDs are newest)
+      // Calculate sequence range for newest messages
       const maxResults = options.maxResults || 50;
-      const uidArray = uids || [];
-      console.log(`[IMAP] Found ${uidArray.length} UIDs, using search criteria:`, searchCriteria);
-      // Sort UIDs descending to get newest emails first, then take maxResults
-      const sortedUids = [...uidArray].sort((a, b) => b - a);
-      const limitedUids = sortedUids.slice(0, maxResults);
-      console.log(`[IMAP] Processing ${limitedUids.length} UIDs (max: ${maxResults}, newest first)`);
+      const startSeq = Math.max(1, totalMessages - maxResults + 1);
+      const range = `${startSeq}:*`;
 
-      if (limitedUids.length > 0) {
-        // Fetch message details
-        for await (const msg of client.fetch(limitedUids, {
-          uid: true,
-          envelope: true,
-          flags: true,
-          bodyStructure: true,
-        })) {
-          const envelope = msg.envelope;
-          if (!envelope) continue;
+      console.log(`[IMAP] Mailbox has ${totalMessages} messages, fetching range ${range} (max: ${maxResults})`);
 
-          messages.push({
-            id: msg.uid.toString(),
-            threadId: envelope.messageId || undefined,
-            provider: 'IMAP',
-            from: envelope.from?.[0]
-              ? `${envelope.from[0].name || ''} <${envelope.from[0].address || ''}>`
-              : '',
-            to: envelope.to?.map((a) => a.address || '') || [],
-            cc: envelope.cc?.map((a) => a.address || ''),
-            subject: envelope.subject || '',
-            snippet: undefined, // IMAP doesn't provide snippets without fetching body
-            date: envelope.date ? new Date(envelope.date) : new Date(),
-            labels: msg.flags ? Array.from(msg.flags) : undefined,
-            isRead: msg.flags?.has('\\Seen'),
-            hasAttachments: this.hasAttachments(msg.bodyStructure),
-          });
+      // Fetch using sequence numbers (NOT UIDs) - this works better with Strato
+      for await (const msg of client.fetch(range, {
+        envelope: true,
+        flags: true,
+        bodyStructure: true,
+      }, { uid: false })) {
+        const envelope = msg.envelope;
+        if (!envelope) continue;
+
+        // Check date filter if since is specified
+        const msgDate = envelope.date ? new Date(envelope.date) : new Date();
+        if (options.since && msgDate < options.since) {
+          continue; // Skip messages older than since date
         }
+
+        messages.push({
+          id: msg.uid?.toString() || msg.seq?.toString() || '',
+          threadId: envelope.messageId || undefined,
+          provider: 'IMAP',
+          from: envelope.from?.[0]
+            ? `${envelope.from[0].name || ''} <${envelope.from[0].address || ''}>`
+            : '',
+          to: envelope.to?.map((a) => a.address || '') || [],
+          cc: envelope.cc?.map((a) => a.address || ''),
+          subject: envelope.subject || '',
+          snippet: undefined, // IMAP doesn't provide snippets without fetching body
+          date: msgDate,
+          labels: msg.flags ? Array.from(msg.flags) : undefined,
+          isRead: msg.flags?.has('\\Seen'),
+          hasAttachments: this.hasAttachments(msg.bodyStructure),
+        });
       }
 
+      // Sort by date descending (newest first) and limit
+      messages.sort((a, b) => b.date.getTime() - a.date.getTime());
+      const limitedMessages = messages.slice(0, maxResults);
+
+      console.log(`[IMAP] Fetched ${messages.length} messages, returning ${limitedMessages.length}`);
+
       return {
-        messages,
-        nextPageToken: uidArray.length > maxResults ? String(maxResults) : undefined,
-        hasMore: uidArray.length > maxResults,
+        messages: limitedMessages,
+        nextPageToken: messages.length > maxResults ? String(maxResults) : undefined,
+        hasMore: messages.length > maxResults,
       };
     } catch (error) {
       console.error('IMAP fetchMessages error:', error);
