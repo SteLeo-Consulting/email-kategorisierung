@@ -75,19 +75,38 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const uidArray = allUids || [];
     const sortedUids = [...uidArray].sort((a, b) => b - a).slice(0, 10);
 
+    // Debug: log the UIDs
+    console.log('[DEBUG] All UIDs:', uidArray);
+    console.log('[DEBUG] Sorted UIDs to fetch:', sortedUids);
+
     if (sortedUids.length > 0) {
-      for await (const msg of client.fetch(sortedUids, {
-        uid: true,
-        envelope: true,
-        flags: true,
-      })) {
-        messages.push({
-          uid: msg.uid,
-          subject: msg.envelope?.subject,
-          from: msg.envelope?.from?.[0]?.address,
-          date: msg.envelope?.date,
-          flags: msg.flags ? Array.from(msg.flags) : [],
-        });
+      try {
+        // Try fetching with different approaches
+        const fetchOptions = {
+          uid: true,
+          envelope: true,
+          flags: true,
+        };
+        console.log('[DEBUG] Fetching with options:', fetchOptions);
+
+        for await (const msg of client.fetch(sortedUids, fetchOptions)) {
+          console.log('[DEBUG] Got message:', msg.uid, msg.envelope?.subject);
+          messages.push({
+            uid: msg.uid,
+            subject: msg.envelope?.subject,
+            from: msg.envelope?.from?.[0]?.address,
+            date: msg.envelope?.date,
+            flags: msg.flags ? Array.from(msg.flags) : [],
+          });
+        }
+      } catch (fetchError: any) {
+        console.error('[DEBUG] Fetch error:', fetchError);
+        return NextResponse.json({
+          error: 'Fetch failed',
+          fetchError: fetchError.message,
+          sortedUids,
+          uidArray,
+        }, { status: 500 });
       }
     }
 
@@ -105,6 +124,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
       mailboxStatus,
       totalUids: uidArray.length,
+      allUids: uidArray,
+      sortedUids,
       unseenUids: unseenUids?.length || 0,
       sampleMessages: messages,
     });
