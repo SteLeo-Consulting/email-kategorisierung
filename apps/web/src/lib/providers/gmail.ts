@@ -1,9 +1,8 @@
 // =============================================================================
 // Gmail Provider Implementation
+// NOTE: Requires googleapis package - install with: npm install googleapis
 // =============================================================================
 
-import { google, gmail_v1 } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library';
 import type { EmailMessage, LabelType } from '@/lib/shared';
 import {
   EmailProvider,
@@ -14,15 +13,42 @@ import {
   ApplyLabelResult,
 } from './base';
 
+// Dynamic import of googleapis to reduce bundle size
+// Will throw if googleapis is not installed
+let google: any;
+let gmail_v1: any;
+
+async function loadGoogleApis() {
+  if (!google) {
+    try {
+      const googleapis = await import('googleapis');
+      google = googleapis.google;
+      gmail_v1 = googleapis.gmail_v1;
+    } catch (error) {
+      throw new Error(
+        'Gmail provider requires the googleapis package. Install it with: npm install googleapis'
+      );
+    }
+  }
+  return { google, gmail_v1 };
+}
+
 export class GmailProvider extends EmailProvider {
   readonly providerName = 'GMAIL';
-  private gmail: gmail_v1.Gmail;
+  private gmail: any;
   private credentials: ProviderCredentials;
-  private oauth2Client: OAuth2Client;
+  private oauth2Client: any;
+  private initialized = false;
 
   constructor(credentials: ProviderCredentials) {
     super();
     this.credentials = credentials;
+  }
+
+  private async init() {
+    if (this.initialized) return;
+
+    const { google } = await loadGoogleApis();
 
     this.oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -30,15 +56,18 @@ export class GmailProvider extends EmailProvider {
     );
 
     this.oauth2Client.setCredentials({
-      access_token: credentials.accessToken,
-      refresh_token: credentials.refreshToken,
-      expiry_date: credentials.expiresAt?.getTime(),
+      access_token: this.credentials.accessToken,
+      refresh_token: this.credentials.refreshToken,
+      expiry_date: this.credentials.expiresAt?.getTime(),
     });
 
     this.gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
+    this.initialized = true;
   }
 
   async fetchMessages(options: FetchOptions): Promise<FetchResult> {
+    await this.init();
+
     try {
       // Build query
       let query = '';
@@ -62,7 +91,7 @@ export class GmailProvider extends EmailProvider {
         for (let i = 0; i < response.data.messages.length; i += batchSize) {
           const batch = response.data.messages.slice(i, i + batchSize);
           const details = await Promise.all(
-            batch.map((msg) =>
+            batch.map((msg: any) =>
               this.gmail.users.messages.get({
                 userId: 'me',
                 id: msg.id!,
@@ -75,22 +104,22 @@ export class GmailProvider extends EmailProvider {
           for (const detail of details) {
             const headers = detail.data.payload?.headers || [];
             const getHeader = (name: string) =>
-              headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value || '';
+              headers.find((h: any) => h.name?.toLowerCase() === name.toLowerCase())?.value || '';
 
             messages.push({
               id: detail.data.id!,
               threadId: detail.data.threadId || undefined,
               provider: 'GMAIL',
               from: getHeader('From'),
-              to: getHeader('To').split(',').map((s) => s.trim()),
-              cc: getHeader('Cc') ? getHeader('Cc').split(',').map((s) => s.trim()) : undefined,
+              to: getHeader('To').split(',').map((s: string) => s.trim()),
+              cc: getHeader('Cc') ? getHeader('Cc').split(',').map((s: string) => s.trim()) : undefined,
               subject: getHeader('Subject'),
               snippet: detail.data.snippet || undefined,
               date: new Date(parseInt(detail.data.internalDate || '0')),
               labels: detail.data.labelIds || undefined,
               isRead: !detail.data.labelIds?.includes('UNREAD'),
               hasAttachments:
-                detail.data.payload?.parts?.some((p) => p.filename && p.filename.length > 0) ||
+                detail.data.payload?.parts?.some((p: any) => p.filename && p.filename.length > 0) ||
                 false,
             });
           }
@@ -109,10 +138,12 @@ export class GmailProvider extends EmailProvider {
   }
 
   async getLabels(): Promise<LabelInfo[]> {
+    await this.init();
+
     try {
       const response = await this.gmail.users.labels.list({ userId: 'me' });
 
-      return (response.data.labels || []).map((label) => ({
+      return (response.data.labels || []).map((label: any) => ({
         id: label.id!,
         name: label.name!,
         type: 'LABEL' as LabelType,
@@ -124,6 +155,8 @@ export class GmailProvider extends EmailProvider {
   }
 
   async createLabel(name: string): Promise<LabelInfo> {
+    await this.init();
+
     try {
       const response = await this.gmail.users.labels.create({
         userId: 'me',
@@ -151,6 +184,8 @@ export class GmailProvider extends EmailProvider {
   }
 
   async applyLabel(messageId: string, labelId: string): Promise<ApplyLabelResult> {
+    await this.init();
+
     try {
       await this.gmail.users.messages.modify({
         userId: 'me',
@@ -168,6 +203,8 @@ export class GmailProvider extends EmailProvider {
   }
 
   async removeLabel(messageId: string, labelId: string): Promise<ApplyLabelResult> {
+    await this.init();
+
     try {
       await this.gmail.users.messages.modify({
         userId: 'me',
@@ -186,6 +223,7 @@ export class GmailProvider extends EmailProvider {
 
   async testConnection(): Promise<boolean> {
     try {
+      await this.init();
       await this.gmail.users.getProfile({ userId: 'me' });
       return true;
     } catch {
@@ -205,6 +243,7 @@ export class GmailProvider extends EmailProvider {
     }
 
     try {
+      await this.init();
       const { credentials } = await this.oauth2Client.refreshAccessToken();
 
       this.oauth2Client.setCredentials(credentials);

@@ -2,16 +2,18 @@
 // Provider Factory and Exports
 // =============================================================================
 
-import { Provider, decrypt } from '@/lib/shared';
+import { decrypt } from '@/lib/shared';
 import { prisma } from '../prisma';
 import { EmailProvider, ProviderCredentials, IMAPCredentials } from './base';
-import { GmailProvider } from './gmail';
-import { OutlookProvider } from './outlook';
+// Dynamic imports for Gmail and Outlook to reduce bundle size
+// import { GmailProvider } from './gmail';
+// import { OutlookProvider } from './outlook';
 import { IMAPProvider } from './imap';
 
 export * from './base';
-export { GmailProvider } from './gmail';
-export { OutlookProvider } from './outlook';
+// Export providers lazily to avoid loading googleapis at build time
+export const getGmailProvider = async () => (await import('./gmail')).GmailProvider;
+export const getOutlookProvider = async () => (await import('./outlook')).OutlookProvider;
 export { IMAPProvider } from './imap';
 
 /**
@@ -44,6 +46,8 @@ export async function createProviderFromConnection(
           : undefined,
         expiresAt: connection.oauthToken.expiresAt || undefined,
       };
+      // Dynamic import to avoid loading googleapis at build time
+      const { GmailProvider } = await import('./gmail');
       return new GmailProvider(credentials);
     }
 
@@ -59,6 +63,8 @@ export async function createProviderFromConnection(
         expiresAt: connection.oauthToken.expiresAt || undefined,
       };
       const useFolders = (connection.settings as any)?.useFolders === true;
+      // Dynamic import to reduce bundle size
+      const { OutlookProvider } = await import('./outlook');
       return new OutlookProvider(credentials, useFolders);
     }
 
