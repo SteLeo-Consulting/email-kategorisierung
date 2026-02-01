@@ -10,6 +10,9 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 
+// API URL - use environment variable or default to production API
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api-vert-kappa-96.vercel.app';
+
 export default function SignInPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -33,7 +36,7 @@ export default function SignInPage() {
     // Detect IMAP server for the domain
     if (newEmail.includes('@')) {
       try {
-        const res = await fetch(`/api/auth/imap?email=${encodeURIComponent(newEmail)}`);
+        const res = await fetch(`${API_URL}/api/auth/imap?email=${encodeURIComponent(newEmail)}`);
         const data = await res.json();
         if (data.detected && data.host) {
           setDetectedServer(data.host);
@@ -69,7 +72,7 @@ export default function SignInPage() {
     const finalPort = imapPort ? parseInt(imapPort) : 993;
 
     try {
-      const imapRes = await fetch('/api/auth/imap', {
+      const imapRes = await fetch(`${API_URL}/api/auth/imap`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

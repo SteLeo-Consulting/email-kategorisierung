@@ -4,6 +4,9 @@
 
 import { useState, useEffect } from 'react';
 
+// API URL - use environment variable or default to production API
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api-vert-kappa-96.vercel.app';
+
 export function useUserEmail() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
@@ -41,7 +44,10 @@ export function buildApiUrl(path: string, email: string | null, additionalParams
   }
 
   const queryString = params.toString();
-  return queryString ? `${path}?${queryString}` : path;
+  const fullPath = queryString ? `${path}?${queryString}` : path;
+
+  // Prepend API_URL to make it an absolute URL to the backend
+  return `${API_URL}${fullPath}`;
 }
 
 /**
