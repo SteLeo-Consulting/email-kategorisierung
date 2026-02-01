@@ -54,10 +54,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error: any) {
+    // Provide detailed error messages
+    let errorMessage = error.message || 'Unbekannter Fehler';
+    let errorCode = 'PROCESSING_ERROR';
+
+    if (error.message?.includes('IMAP') || error.message?.includes('connection')) {
+      errorMessage = `IMAP-Verbindungsfehler: ${error.message}. Bitte prüfen Sie Ihre Zugangsdaten.`;
+      errorCode = 'IMAP_CONNECTION_ERROR';
+    } else if (error.message?.includes('timeout')) {
+      errorMessage = 'Zeitüberschreitung bei der Verarbeitung. Bitte versuchen Sie es mit weniger E-Mails.';
+      errorCode = 'TIMEOUT_ERROR';
+    } else if (error.message?.includes('not active')) {
+      errorMessage = 'Die Verbindung ist nicht aktiv. Bitte prüfen Sie die Verbindungseinstellungen.';
+      errorCode = 'CONNECTION_INACTIVE';
+    } else if (error.message?.includes('decrypt')) {
+      errorMessage = 'Fehler beim Entschlüsseln der Zugangsdaten. Bitte melden Sie sich erneut an.';
+      errorCode = 'DECRYPT_ERROR';
+    }
+
+    console.error(`[Process Connection ${params.id}] Error:`, error);
+
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
+        error: errorMessage,
+        errorCode,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       },
       { status: 500 }
     );

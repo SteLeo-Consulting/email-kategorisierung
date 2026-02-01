@@ -26,7 +26,14 @@
       "Bash(curl:*)",
       "Bash(npx prisma db pull:*)",
       "Bash(openssl rand:*)",
-      "Bash(printf:*)"
+      "Bash(printf:*)",
+      "Bash(__NEW_LINE_2bbbd081a19275c2__ echo -e \"\\\\n=== 2. IMAP Detection ===\")",
+      "Bash(__NEW_LINE_a825a25521d8fdc9__ echo -e \"\\\\n=== 3. Stats \\(ohne Auth\\) ===\")",
+      "Bash(__NEW_LINE_75e8f048f9a14168__ echo -e \"\\\\n=== 4. Stats \\(mit Email\\) ===\")",
+      "Bash(__NEW_LINE_6445052a2affaa50__ echo -e \"\\\\n=== 5. Connections \\(mit Email\\) ===\")",
+      "Bash(__NEW_LINE_71748f10cfe83665__ echo -e \"\\\\n=== 6. Categories \\(mit Email\\) ===\")",
+      "Bash(__NEW_LINE_df44672e3da6e17c__ echo -e \"\\\\n=== 7. Rules \\(mit Email\\) ===\")",
+      "Bash(CONN_ID=\"cml3sm8m3000214iblmufrh37\":*)"
     ]
   }
 }
