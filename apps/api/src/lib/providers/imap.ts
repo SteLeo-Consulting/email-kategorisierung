@@ -67,12 +67,14 @@ export class IMAPProvider extends EmailProvider {
         { uid: true }
       );
 
-      // Limit results
+      // Limit results - take the LATEST emails (highest UIDs are newest)
       const maxResults = options.maxResults || 50;
       const uidArray = uids || [];
       console.log(`[IMAP] Found ${uidArray.length} UIDs, using search criteria:`, searchCriteria);
-      const limitedUids = uidArray.slice(0, maxResults);
-      console.log(`[IMAP] Processing ${limitedUids.length} UIDs (max: ${maxResults})`);
+      // Sort UIDs descending to get newest emails first, then take maxResults
+      const sortedUids = [...uidArray].sort((a, b) => b - a);
+      const limitedUids = sortedUids.slice(0, maxResults);
+      console.log(`[IMAP] Processing ${limitedUids.length} UIDs (max: ${maxResults}, newest first)`);
 
       if (limitedUids.length > 0) {
         // Fetch message details
