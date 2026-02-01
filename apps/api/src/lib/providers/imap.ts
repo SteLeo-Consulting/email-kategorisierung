@@ -158,22 +158,16 @@ export class IMAPProvider extends EmailProvider {
   async createLabel(name: string): Promise<LabelInfo> {
     try {
       const client = await this.getClient();
-      // Create folder path - only use prefix if it's specified
-      const folderPath = this.useFolders && this.folderPrefix
-        ? `${this.folderPrefix}/${name}`
-        : name;
+      // Create folder directly with the given name - no prefix
+      // EmailCat does NOT create its own namespace
+      const folderPath = name;
 
-      // Create the parent folder if needed (only if prefix is set)
-      if (this.useFolders && this.folderPrefix) {
-        try {
-          await client.mailboxCreate(this.folderPrefix);
-        } catch {
-          // Parent folder might already exist
-        }
-      }
+      console.log(`[IMAP] createLabel: creating folder "${folderPath}"`);
 
       // Create the folder
       await client.mailboxCreate(folderPath);
+
+      console.log(`[IMAP] createLabel: folder "${folderPath}" created successfully`);
 
       return {
         id: folderPath,
@@ -183,15 +177,14 @@ export class IMAPProvider extends EmailProvider {
     } catch (error: any) {
       // If folder already exists, return it
       if (error.code === 'ALREADYEXISTS' || error.message?.includes('already exists')) {
-        const folderPath = this.useFolders && this.folderPrefix
-          ? `${this.folderPrefix}/${name}`
-          : name;
+        console.log(`[IMAP] createLabel: folder "${name}" already exists`);
         return {
-          id: folderPath,
+          id: name,
           name: name,
           type: 'FOLDER',
         };
       }
+      console.error(`[IMAP] createLabel error:`, error.message);
       throw error;
     }
   }
@@ -201,20 +194,46 @@ export class IMAPProvider extends EmailProvider {
       const client = await this.getClient();
       const uid = parseInt(messageId);
 
+      console.log(`[IMAP] Applying label "${labelId}" to message UID ${uid}`);
+
       // Open INBOX
       await client.mailboxOpen('INBOX');
 
       if (this.useFolders) {
+        // First ensure the target folder exists
+        try {
+          const mailboxes = await client.list();
+          const folderExists = mailboxes.some((mb) => mb.path === labelId);
+
+          if (!folderExists) {
+            console.log(`[IMAP] Folder "${labelId}" does not exist, creating it...`);
+            await client.mailboxCreate(labelId);
+            console.log(`[IMAP] Folder "${labelId}" created successfully`);
+          }
+        } catch (createError: any) {
+          // Folder might already exist (race condition)
+          if (!createError.message?.includes('already exists') && createError.code !== 'ALREADYEXISTS') {
+            console.error(`[IMAP] Error creating folder "${labelId}":`, createError.message);
+            throw createError;
+          }
+        }
+
+        // Re-open INBOX (mailbox may have been changed by create)
+        await client.mailboxOpen('INBOX');
+
         // Copy message to the target folder
+        console.log(`[IMAP] Copying message UID ${uid} to folder "${labelId}"`);
         await client.messageCopy([uid], labelId, { uid: true });
+        console.log(`[IMAP] Message copied successfully to "${labelId}"`);
       } else {
         // Set a custom flag/keyword
         await client.messageFlagsAdd([uid], [labelId], { uid: true });
+        console.log(`[IMAP] Flag "${labelId}" added to message UID ${uid}`);
       }
 
       return { success: true, labelId };
     } catch (error: any) {
-      console.error('IMAP applyLabel error:', error);
+      console.error(`[IMAP] applyLabel error for message ${messageId} -> "${labelId}":`, error.message);
       return { success: false, error: error.message };
     }
   }
@@ -276,36 +295,27 @@ export class IMAPProvider extends EmailProvider {
   /**
    * Get or create a folder by name
    * Name should be the category name directly (e.g., "Rechnung")
-   * EmailCat does NOT create its own namespace - categories are created directly
+   * EmailCat does NOT create its own namespace - categories are created directly at IMAP root level
    */
   async getOrCreateLabel(name: string): Promise<LabelInfo> {
     const labels = await this.getLabels();
 
-    // Determine folder path based on prefix setting
-    let folderPath: string;
-    let labelName: string;
+    // The name provided is the direct folder name (e.g., "Rechnung")
+    // We use it as-is since EmailCat should NOT create its own namespace
+    const folderPath = name;
 
-    if (this.folderPrefix && name.startsWith(this.folderPrefix + '/')) {
-      // Full path provided with prefix (legacy support)
-      folderPath = name;
-      labelName = name.substring(this.folderPrefix.length + 1);
-    } else if (name.includes('/')) {
-      // Some other path format
-      folderPath = name;
-      labelName = name.split('/').pop() || name;
-    } else {
-      // Just the label name provided - use it directly or with prefix if set
-      labelName = name;
-      folderPath = this.useFolders && this.folderPrefix
-        ? `${this.folderPrefix}/${name}`
-        : name;
-    }
+    console.log(`[IMAP] getOrCreateLabel: looking for folder "${folderPath}"`);
 
     // Check for existing folder
-    const existing = labels.find((l) => l.id === folderPath || l.id === name);
-    if (existing) return existing;
+    const existing = labels.find((l) => l.id === folderPath || l.name === name);
+    if (existing) {
+      console.log(`[IMAP] Found existing folder: ${existing.id}`);
+      return existing;
+    }
 
-    return this.createLabel(labelName);
+    // Create the folder directly with the given name
+    console.log(`[IMAP] Creating new folder: "${folderPath}"`);
+    return this.createLabel(name);
   }
 
   /**

@@ -178,17 +178,22 @@ export class EmailProcessor {
 
     // Apply label if not a dry run
     if (!this.options.dryRun && labelInfo && this.provider) {
-      // Ensure label exists
+      // Ensure label exists and apply it
       try {
+        console.log(`[Processor] Getting or creating label "${labelInfo.labelId}" for message ${message.id}`);
         const label = await this.provider.getOrCreateLabel(labelInfo.labelId);
+        console.log(`[Processor] Applying label "${label.id}" to message ${message.id}`);
         const applyResult = await this.provider.applyLabel(message.id, label.id);
 
         if (applyResult.success) {
           labeled = true;
           labelApplied = label.id;
+          console.log(`[Processor] Successfully labeled message ${message.id} with "${label.id}"`);
+        } else {
+          console.error(`[Processor] Failed to apply label to message ${message.id}: ${applyResult.error}`);
         }
-      } catch (error) {
-        console.error(`Error applying label to message ${message.id}:`, error);
+      } catch (error: any) {
+        console.error(`[Processor] Error applying label to message ${message.id}:`, error.message);
       }
     }
 

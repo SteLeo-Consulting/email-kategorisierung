@@ -481,18 +481,20 @@ export const PROCESSING_LIMITS = {
 // DEFAULT LABEL NAMES
 // =============================================================================
 
+// Note: Labels are created directly WITHOUT any prefix (e.g., "Rechnung", not "EmailCat/Rechnung")
+// This ensures EmailCat does NOT create its own folder namespace in the user's mailbox
 export const DEFAULT_LABEL_NAMES: Record<CategoryCode, string> = {
-  INVOICE: 'EmailCat/Rechnung',
-  INQUIRY: 'EmailCat/Anfrage',
-  DOCUMENT_APPROVAL: 'EmailCat/Freigabe',
-  ORDER: 'EmailCat/Bestellung',
-  APPOINTMENT: 'EmailCat/Termin',
-  CUSTOMER: 'EmailCat/Kunde',
-  LEAD: 'EmailCat/Lead',
-  SUPPORT: 'EmailCat/Support',
-  NEWSLETTER: 'EmailCat/Newsletter',
-  PERSONAL: 'EmailCat/Privat',
-  TODO: 'EmailCat/ToDo',
-  SPAM_SUSPECT: 'EmailCat/Spam-Verdacht',
-  REVIEW: 'EmailCat/Prüfen',
+  INVOICE: 'Rechnung',
+  INQUIRY: 'Anfrage',
+  DOCUMENT_APPROVAL: 'Freigabe',
+  ORDER: 'Bestellung',
+  APPOINTMENT: 'Termin',
+  CUSTOMER: 'Kunde',
+  LEAD: 'Lead',
+  SUPPORT: 'Support',
+  NEWSLETTER: 'Newsletter',
+  PERSONAL: 'Privat',
+  TODO: 'ToDo',
+  SPAM_SUSPECT: 'Spam-Verdacht',
+  REVIEW: 'Prüfen',
 };
