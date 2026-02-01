@@ -161,12 +161,12 @@ export async function POST(request: NextRequest) {
       if (testResult.error?.includes('AUTHENTICATIONFAILED') || testResult.error?.includes('Invalid credentials')) {
         errorMessage += 'Falsches Passwort oder E-Mail-Adresse. ';
         if (email.includes('gmail.com') || email.includes('googlemail.com')) {
-          errorMessage += 'Fuer Gmail benoetigst du ein App-Passwort: https://myaccount.google.com/apppasswords';
+          errorMessage += 'Für Gmail benötigst du ein App-Passwort: https://myaccount.google.com/apppasswords';
         } else if (email.includes('outlook') || email.includes('hotmail') || email.includes('live')) {
-          errorMessage += 'Fuer Outlook/Hotmail benoetigst du ein App-Passwort.';
+          errorMessage += 'Für Outlook/Hotmail benötigst du ein App-Passwort.';
         }
       } else if (testResult.error?.includes('ENOTFOUND') || testResult.error?.includes('getaddrinfo')) {
-        errorMessage += `Server "${imapHost}" nicht gefunden. Bitte IMAP-Server pruefen.`;
+        errorMessage += `Server "${imapHost}" nicht gefunden. Bitte IMAP-Server prüfen.`;
       } else if (testResult.error?.includes('ETIMEDOUT') || testResult.error?.includes('timeout')) {
         errorMessage += 'Verbindung zum Server fehlgeschlagen (Timeout).';
       } else {

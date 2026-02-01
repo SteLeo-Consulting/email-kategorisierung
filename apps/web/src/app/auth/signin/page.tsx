@@ -52,15 +52,16 @@ export default function SignInPage() {
     setError('');
 
     try {
-      // Authenticate with IMAP and create user/connection
+      // Always send imapHost if it's set (either from detection or manual input)
+      // This ensures the manually entered IMAP server is always used
       const imapRes = await fetch('/api/auth/imap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
           password,
-          host: showAdvanced && imapHost ? imapHost : undefined,
-          port: showAdvanced && imapPort ? parseInt(imapPort) : undefined,
+          host: imapHost || undefined,
+          port: imapPort ? parseInt(imapPort) : undefined,
           secure: true,
         }),
       });
@@ -136,7 +137,7 @@ export default function SignInPage() {
               />
               {email.includes('gmail') && (
                 <p className="text-xs text-amber-600">
-                  Fuer Gmail brauchst du ein{' '}
+                  Für Gmail brauchst du ein{' '}
                   <a
                     href="https://myaccount.google.com/apppasswords"
                     target="_blank"
@@ -210,7 +211,7 @@ export default function SignInPage() {
 
           <div className="space-y-3 pt-2">
             <p className="text-xs text-center text-muted-foreground">
-              Funktioniert mit Gmail, GMX, Web.de, Outlook, Strato, 1&1 und allen anderen E-Mail-Anbietern
+              Funktioniert mit Gmail, GMX, Web.de, Outlook, Strato, 1&amp;1 und allen anderen E-Mail-Anbietern
             </p>
           </div>
 
@@ -218,7 +219,7 @@ export default function SignInPage() {
 
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">
-              Dein Passwort wird verschluesselt gespeichert und nur zur E-Mail-Abfrage verwendet.
+              Dein Passwort wird verschlüsselt gespeichert und nur zur E-Mail-Abfrage verwendet.
             </p>
           </div>
         </CardContent>
