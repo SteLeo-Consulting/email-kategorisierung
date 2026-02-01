@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,12 +21,14 @@ export default function SignInPage() {
   const [imapPort, setImapPort] = useState('993');
   const [detectedServer, setDetectedServer] = useState<string | null>(null);
 
+  // Track if user has manually edited the IMAP host
+  const userEditedHost = useRef(false);
+
   // Auto-detect IMAP server when email changes
   const handleEmailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newEmail = e.target.value;
     setEmail(newEmail);
     setError('');
-    setDetectedServer(null);
 
     // Detect IMAP server for the domain
     if (newEmail.includes('@')) {
@@ -35,15 +37,26 @@ export default function SignInPage() {
         const data = await res.json();
         if (data.detected && data.host) {
           setDetectedServer(data.host);
-          if (!showAdvanced) {
+          // Only auto-fill if user hasn't manually edited the host
+          if (!userEditedHost.current) {
             setImapHost(data.host);
             setImapPort(String(data.port));
           }
+        } else {
+          setDetectedServer(null);
         }
       } catch {
-        // Ignore detection errors
+        setDetectedServer(null);
       }
+    } else {
+      setDetectedServer(null);
     }
+  };
+
+  // Handle manual IMAP host change
+  const handleImapHostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    userEditedHost.current = true; // Mark as manually edited
+    setImapHost(e.target.value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,17 +64,19 @@ export default function SignInPage() {
     setIsLoading(true);
     setError('');
 
+    // Use the current imapHost value (either auto-detected or manually entered)
+    const finalHost = imapHost || undefined;
+    const finalPort = imapPort ? parseInt(imapPort) : 993;
+
     try {
-      // Always send imapHost if it's set (either from detection or manual input)
-      // This ensures the manually entered IMAP server is always used
       const imapRes = await fetch('/api/auth/imap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
           password,
-          host: imapHost || undefined,
-          port: imapPort ? parseInt(imapPort) : undefined,
+          host: finalHost,
+          port: finalPort,
           secure: true,
         }),
       });
@@ -91,7 +106,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Email Kategorisierung</CardTitle>
@@ -116,8 +131,8 @@ export default function SignInPage() {
                   disabled={isLoading}
                 />
               </div>
-              {detectedServer && (
-                <p className="text-xs text-green-600 flex items-center gap-1">
+              {detectedServer && !userEditedHost.current && (
+                <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3" />
                   Server erkannt: {detectedServer}
                 </p>
@@ -136,7 +151,7 @@ export default function SignInPage() {
                 disabled={isLoading}
               />
               {email.includes('gmail') && (
-                <p className="text-xs text-amber-600">
+                <p className="text-xs text-amber-600 dark:text-amber-400">
                   Für Gmail brauchst du ein{' '}
                   <a
                     href="https://myaccount.google.com/apppasswords"
@@ -161,17 +176,20 @@ export default function SignInPage() {
             </button>
 
             {showAdvanced && (
-              <div className="space-y-3 p-3 bg-slate-50 rounded-lg">
+              <div className="space-y-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                 <div className="space-y-2">
                   <Label htmlFor="imapHost">IMAP-Server</Label>
                   <Input
                     id="imapHost"
                     type="text"
-                    placeholder="z.B. imap.gmail.com"
+                    placeholder="z.B. imap.strato.de"
                     value={imapHost}
-                    onChange={(e) => setImapHost(e.target.value)}
+                    onChange={handleImapHostChange}
                     disabled={isLoading}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Für Strato: imap.strato.de | Für 1&amp;1: imap.1und1.de
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="imapPort">Port</Label>

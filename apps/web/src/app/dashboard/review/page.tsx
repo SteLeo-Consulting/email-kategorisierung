@@ -22,6 +22,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { RefreshCw, Check, X, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDate, truncate } from '@/lib/utils';
+import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
 
 interface ProcessedMessage {
   id: string;
@@ -58,23 +59,26 @@ export default function ReviewPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const userEmail = useUserEmail();
 
   const fetchData = async () => {
+    if (!userEmail) return;
+
     try {
       const [messagesRes, categoriesRes] = await Promise.all([
-        fetch(`/api/processed-messages?needsReview=true&page=${page}&pageSize=20`),
-        fetch('/api/categories'),
+        fetch(buildApiUrl(`/api/processed-messages?needsReview=true&page=${page}&pageSize=20`, userEmail)),
+        fetch(buildApiUrl('/api/categories', userEmail)),
       ]);
 
       if (messagesRes.ok) {
         const data = await messagesRes.json();
-        setMessages(data.messages);
-        setTotalPages(data.pagination.totalPages);
+        setMessages(data.messages || []);
+        setTotalPages(data.pagination?.totalPages || 1);
       }
 
       if (categoriesRes.ok) {
         const data = await categoriesRes.json();
-        setCategories(data.categories);
+        setCategories(data.categories || []);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -84,16 +88,20 @@ export default function ReviewPage() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [page]);
+    if (userEmail) {
+      fetchData();
+    }
+  }, [page, userEmail]);
 
   const handleReview = async (
     id: string,
     action: 'approve' | 'change' | 'reject',
     newCategoryId?: string
   ) => {
+    if (!userEmail) return;
+
     try {
-      const res = await fetch(`/api/processed-messages/${id}/review`, {
+      const res = await fetch(buildApiUrl(`/api/processed-messages/${id}/review`, userEmail), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, newCategoryId }),
@@ -119,7 +127,7 @@ export default function ReviewPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !userEmail) {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -131,7 +139,7 @@ export default function ReviewPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">E-Mails pruefen</h1>
+          <h1 className="text-3xl font-bold">E-Mails prüfen</h1>
           <p className="text-muted-foreground">
             E-Mails mit niedriger Klassifizierungswahrscheinlichkeit
           </p>
@@ -144,9 +152,9 @@ export default function ReviewPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Zur Pruefung ({messages.length})</CardTitle>
+          <CardTitle>Zur Prüfung ({messages.length})</CardTitle>
           <CardDescription>
-            Bestaetige oder aendere die vorgeschlagene Kategorie
+            Bestätige oder ändere die vorgeschlagene Kategorie
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -209,7 +217,7 @@ export default function ReviewPage() {
                           }
                         >
                           <SelectTrigger className="w-40">
-                            <SelectValue placeholder="Aendern..." />
+                            <SelectValue placeholder="Ändern..." />
                           </SelectTrigger>
                           <SelectContent>
                             {categories.map((cat) => (
@@ -292,7 +300,7 @@ export default function ReviewPage() {
             </>
           ) : (
             <p className="text-center text-muted-foreground py-8">
-              Keine E-Mails zur Pruefung vorhanden. Gut gemacht!
+              Keine E-Mails zur Prüfung vorhanden. Gut gemacht!
             </p>
           )}
         </CardContent>

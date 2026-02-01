@@ -35,6 +35,7 @@ export const translations = {
       rules: 'Regeln',
       review: 'Prüfen',
       auditLog: 'Audit Log',
+      settings: 'Einstellungen',
     },
 
     // Dashboard
@@ -255,6 +256,7 @@ export const translations = {
       rules: 'Rules',
       review: 'Review',
       auditLog: 'Audit Log',
+      settings: 'Settings',
     },
 
     // Dashboard

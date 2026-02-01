@@ -248,7 +248,7 @@ export async function createDefaultRules(userId: string): Promise<void> {
   const categoryMap = new Map(categories.map((c: any) => [c.internalCode, c.id]));
 
   for (const rule of DEFAULT_RULES) {
-    const categoryId = categoryMap.get(rule.categoryCode);
+    const categoryId = categoryMap.get(rule.categoryCode) as string | undefined;
     if (!categoryId) continue;
 
     // Check if rule already exists

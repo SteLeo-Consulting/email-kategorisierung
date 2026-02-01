@@ -296,3 +296,35 @@ model SystemSetting {
 
   @@map("system_settings")
 }
+
+// =============================================================================
+// LLM PROVIDERS (AI API Connections)
+// =============================================================================
+enum LLMProviderType {
+  MISTRAL
+  OPENAI
+  ANTHROPIC
+  GROQ
+}
+
+enum LLMProviderStatus {
+  ACTIVE
+  ERROR
+  UNCHECKED
+}
+
+model LLMProvider {
+  id        String            @id @default(cuid())
+  userId    String            @map("user_id")
+  name      String            // Display name
+  provider  LLMProviderType
+  apiKey    String            @map("api_key") @db.Text // Encrypted
+  model     String            // Model name (e.g., mistral-large-latest)
+  isDefault Boolean           @default(false) @map("is_default")
+  status    LLMProviderStatus @default(UNCHECKED)
+  lastError String?           @map("last_error")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  @@map("llm_providers")
+}

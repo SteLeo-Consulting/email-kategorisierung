@@ -16,6 +16,9 @@ export type ConnectionStatus = z.infer<typeof ConnectionStatusEnum>;
 
 export const CategoryCodeEnum = z.enum([
   'INVOICE',
+  'INQUIRY',
+  'DOCUMENT_APPROVAL',
+  'ORDER',
   'APPOINTMENT',
   'CUSTOMER',
   'LEAD',

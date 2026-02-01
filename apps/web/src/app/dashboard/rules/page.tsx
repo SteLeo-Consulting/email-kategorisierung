@@ -32,7 +32,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, RefreshCw, Trash2, Edit } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, Sparkles } from 'lucide-react';
+import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
 
 interface Rule {
   id: string;
@@ -44,6 +45,7 @@ interface Rule {
   priority: number;
   confidence: number;
   isActive: boolean;
+  useLLM?: boolean;
   category: {
     name: string;
     internalCode: string;
@@ -72,24 +74,28 @@ export default function RulesPage() {
     caseSensitive: false,
     priority: 50,
     confidence: 0.85,
+    useLLM: false,
   });
   const { toast } = useToast();
+  const userEmail = useUserEmail();
 
   const fetchData = async () => {
+    if (!userEmail) return;
+
     try {
       const [rulesRes, categoriesRes] = await Promise.all([
-        fetch('/api/rules'),
-        fetch('/api/categories'),
+        fetch(buildApiUrl('/api/rules', userEmail)),
+        fetch(buildApiUrl('/api/categories', userEmail)),
       ]);
 
       if (rulesRes.ok) {
         const data = await rulesRes.json();
-        setRules(data.rules);
+        setRules(data.rules || []);
       }
 
       if (categoriesRes.ok) {
         const data = await categoriesRes.json();
-        setCategories(data.categories);
+        setCategories(data.categories || []);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -99,12 +105,16 @@ export default function RulesPage() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (userEmail) {
+      fetchData();
+    }
+  }, [userEmail]);
 
   const handleCreate = async () => {
+    if (!userEmail) return;
+
     try {
-      const res = await fetch('/api/rules', {
+      const res = await fetch(buildApiUrl('/api/rules', userEmail), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -122,6 +132,7 @@ export default function RulesPage() {
           caseSensitive: false,
           priority: 50,
           confidence: 0.85,
+          useLLM: false,
         });
         fetchData();
       } else {
@@ -138,25 +149,28 @@ export default function RulesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Regel wirklich loeschen?')) return;
+    if (!userEmail) return;
+    if (!confirm('Regel wirklich löschen?')) return;
 
     try {
-      const res = await fetch(`/api/rules/${id}`, {
+      const res = await fetch(buildApiUrl(`/api/rules/${id}`, userEmail), {
         method: 'DELETE',
       });
 
       if (res.ok) {
-        toast({ title: 'Regel geloescht' });
+        toast({ title: 'Regel gelöscht' });
         fetchData();
       }
     } catch (error) {
-      toast({ title: 'Fehler beim Loeschen', variant: 'destructive' });
+      toast({ title: 'Fehler beim Löschen', variant: 'destructive' });
     }
   };
 
   const handleToggle = async (id: string, isActive: boolean) => {
+    if (!userEmail) return;
+
     try {
-      await fetch(`/api/rules/${id}`, {
+      await fetch(buildApiUrl(`/api/rules/${id}`, userEmail), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !isActive }),
@@ -167,7 +181,7 @@ export default function RulesPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !userEmail) {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -181,7 +195,7 @@ export default function RulesPage() {
         <div>
           <h1 className="text-3xl font-bold">Klassifikationsregeln</h1>
           <p className="text-muted-foreground">
-            Regeln fuer die automatische E-Mail-Kategorisierung
+            Regeln für die automatische E-Mail-Kategorisierung
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -206,7 +220,7 @@ export default function RulesPage() {
                   onValueChange={(v) => setForm({ ...form, categoryId: v })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Kategorie waehlen" />
+                    <SelectValue placeholder="Kategorie wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((cat) => (
@@ -247,6 +261,7 @@ export default function RulesPage() {
                       <SelectItem value="KEYWORD">Keyword</SelectItem>
                       <SelectItem value="REGEX">Regex</SelectItem>
                       <SelectItem value="SENDER">Absender</SelectItem>
+                      <SelectItem value="LLM">LLM (KI-basiert)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -271,21 +286,28 @@ export default function RulesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Muster</Label>
+                <Label>Muster / Beschreibung</Label>
                 <Input
                   value={form.pattern}
                   onChange={(e) => setForm({ ...form, pattern: e.target.value })}
                   placeholder={
-                    form.type === 'REGEX'
+                    form.type === 'LLM'
+                      ? 'z.B. E-Mails die eine Rechnung oder Zahlungsaufforderung enthalten'
+                      : form.type === 'REGEX'
                       ? 'z.B. (rechnung|invoice)'
                       : 'z.B. rechnung'
                   }
                 />
+                {form.type === 'LLM' && (
+                  <p className="text-xs text-muted-foreground">
+                    Beschreibe in natürlicher Sprache, welche E-Mails erkannt werden sollen
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Prioritaet (0-100)</Label>
+                  <Label>Priorität (0-100)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -312,13 +334,15 @@ export default function RulesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={form.caseSensitive}
-                  onCheckedChange={(v) => setForm({ ...form, caseSensitive: v })}
-                />
-                <Label>Gross-/Kleinschreibung beachten</Label>
-              </div>
+              {form.type !== 'LLM' && (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.caseSensitive}
+                    onCheckedChange={(v) => setForm({ ...form, caseSensitive: v })}
+                  />
+                  <Label>Groß-/Kleinschreibung beachten</Label>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
@@ -336,63 +360,72 @@ export default function RulesPage() {
         <CardHeader>
           <CardTitle>Aktive Regeln ({rules.length})</CardTitle>
           <CardDescription>
-            Regeln werden nach Prioritaet absteigend angewendet
+            Regeln werden nach Priorität absteigend angewendet
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Kategorie</TableHead>
-                <TableHead>Typ</TableHead>
-                <TableHead>Muster</TableHead>
-                <TableHead>Prioritaet</TableHead>
-                <TableHead>Konfidenz</TableHead>
-                <TableHead>Aktiv</TableHead>
-                <TableHead className="text-right">Aktionen</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rules.map((rule) => (
-                <TableRow key={rule.id}>
-                  <TableCell className="font-medium">{rule.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: rule.category.color }}
-                      />
-                      {rule.category.name}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{rule.type}</Badge>
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate font-mono text-xs">
-                    {rule.pattern}
-                  </TableCell>
-                  <TableCell>{rule.priority}</TableCell>
-                  <TableCell>{(rule.confidence * 100).toFixed(0)}%</TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={rule.isActive}
-                      onCheckedChange={() => handleToggle(rule.id, rule.isActive)}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(rule.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
+          {rules.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Kategorie</TableHead>
+                  <TableHead>Typ</TableHead>
+                  <TableHead>Muster</TableHead>
+                  <TableHead>Priorität</TableHead>
+                  <TableHead>Konfidenz</TableHead>
+                  <TableHead>Aktiv</TableHead>
+                  <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {rules.map((rule) => (
+                  <TableRow key={rule.id}>
+                    <TableCell className="font-medium">{rule.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: rule.category.color }}
+                        />
+                        {rule.category.name}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                        {rule.type === 'LLM' && <Sparkles className="h-3 w-3" />}
+                        {rule.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate font-mono text-xs">
+                      {rule.pattern}
+                    </TableCell>
+                    <TableCell>{rule.priority}</TableCell>
+                    <TableCell>{(rule.confidence * 100).toFixed(0)}%</TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={rule.isActive}
+                        onCheckedChange={() => handleToggle(rule.id, rule.isActive)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(rule.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">
+              Noch keine Regeln erstellt. Klicke auf "Neue Regel" um zu beginnen.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -25,6 +25,8 @@ import {
   Moon,
   Sun,
   Monitor,
+  Sparkles,
+  Cog,
 } from 'lucide-react';
 
 interface DashboardNavProps {
@@ -43,6 +45,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
     { href: '/dashboard/rules', label: t('nav.rules'), icon: Settings },
     { href: '/dashboard/review', label: t('nav.review'), icon: AlertCircle },
     { href: '/dashboard/audit', label: t('nav.auditLog'), icon: FileText },
+    { href: '/dashboard/settings', label: t('nav.settings'), icon: Sparkles },
   ];
 
   const handleLogout = () => {

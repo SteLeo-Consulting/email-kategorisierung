@@ -259,14 +259,34 @@ export class IMAPProvider extends EmailProvider {
 
   /**
    * Get or create a folder by name
+   * Name can be either just the label (e.g., "Rechnung") or full path (e.g., "EmailCat/Rechnung")
    */
   async getOrCreateLabel(name: string): Promise<LabelInfo> {
     const labels = await this.getLabels();
-    const folderPath = this.useFolders ? `${this.folderPrefix}/${name}` : name;
-    const existing = labels.find((l) => l.id === folderPath || l.name === name);
+
+    // Check if name is already a full path with prefix
+    let folderPath: string;
+    let labelName: string;
+
+    if (name.startsWith(this.folderPrefix + '/')) {
+      // Full path provided (e.g., "EmailCat/Rechnung")
+      folderPath = name;
+      labelName = name.substring(this.folderPrefix.length + 1);
+    } else if (name.includes('/')) {
+      // Some other path format
+      folderPath = name;
+      labelName = name.split('/').pop() || name;
+    } else {
+      // Just the label name provided
+      folderPath = this.useFolders ? `${this.folderPrefix}/${name}` : name;
+      labelName = name;
+    }
+
+    // Check for existing folder
+    const existing = labels.find((l) => l.id === folderPath || l.id === name);
     if (existing) return existing;
 
-    return this.createLabel(name);
+    return this.createLabel(labelName);
   }
 
   /**

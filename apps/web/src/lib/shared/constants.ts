@@ -27,6 +27,22 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = [
     isSystem: true,
   },
   {
+    code: 'INQUIRY',
+    name: 'Anfrage',
+    description: 'Kundenanfragen, Informationsanfragen, Angebote',
+    color: '#14b8a6', // teal
+    icon: 'message-circle',
+    isSystem: true,
+  },
+  {
+    code: 'DOCUMENT_APPROVAL',
+    name: 'Dokumenten Freigabe',
+    description: 'Google Sheets, Docs, Freigaben, Genehmigungen',
+    color: '#0ea5e9', // sky
+    icon: 'file-check',
+    isSystem: true,
+  },
+  {
     code: 'APPOINTMENT',
     name: 'Termin',
     description: 'Terminbestätigungen, Einladungen, Kalenderereignisse',
@@ -56,6 +72,14 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = [
     description: 'Support-Anfragen, Tickets, Hilfe-Anfragen',
     color: '#a855f7', // purple
     icon: 'headphones',
+    isSystem: true,
+  },
+  {
+    code: 'ORDER',
+    name: 'Bestellung',
+    description: 'Bestellbestätigungen, Lieferungen, Versand',
+    color: '#10b981', // emerald
+    icon: 'package',
     isSystem: true,
   },
   {
@@ -153,6 +177,120 @@ export const DEFAULT_RULES: DefaultRule[] = [
     confidence: 0.85,
   },
 
+  // INQUIRY rules (Anfrage)
+  {
+    categoryCode: 'INQUIRY',
+    name: 'Anfrage im Betreff',
+    type: 'KEYWORD',
+    field: 'SUBJECT',
+    pattern: 'anfrage',
+    priority: 100,
+    confidence: 0.90,
+  },
+  {
+    categoryCode: 'INQUIRY',
+    name: 'Inquiry in Subject',
+    type: 'KEYWORD',
+    field: 'SUBJECT',
+    pattern: 'inquiry',
+    priority: 100,
+    confidence: 0.90,
+  },
+  {
+    categoryCode: 'INQUIRY',
+    name: 'Angebot angefordert',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(angebot|quotation|quote|preisanfrage)',
+    priority: 95,
+    confidence: 0.85,
+  },
+  {
+    categoryCode: 'INQUIRY',
+    name: 'Kontaktformular',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(kontaktformular|contact form|neue nachricht)',
+    priority: 90,
+    confidence: 0.85,
+  },
+
+  // DOCUMENT_APPROVAL rules
+  {
+    categoryCode: 'DOCUMENT_APPROVAL',
+    name: 'Google Sheets Freigabe',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(hat.*freigegeben|shared.*with you|zugriff.*gewährt)',
+    priority: 100,
+    confidence: 0.95,
+  },
+  {
+    categoryCode: 'DOCUMENT_APPROVAL',
+    name: 'Google Drive Einladung',
+    type: 'SENDER',
+    field: 'FROM',
+    pattern: '@google.com',
+    priority: 80,
+    confidence: 0.70,
+  },
+  {
+    categoryCode: 'DOCUMENT_APPROVAL',
+    name: 'Microsoft SharePoint',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(sharepoint|onedrive).*(freigabe|shared|access)',
+    priority: 95,
+    confidence: 0.90,
+  },
+  {
+    categoryCode: 'DOCUMENT_APPROVAL',
+    name: 'Dropbox Freigabe',
+    type: 'REGEX',
+    field: 'FROM',
+    pattern: '(dropbox|no-reply@dropbox)',
+    priority: 90,
+    confidence: 0.85,
+  },
+  {
+    categoryCode: 'DOCUMENT_APPROVAL',
+    name: 'Dokument zur Genehmigung',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(zur genehmigung|approval|freigabe erteilen)',
+    priority: 95,
+    confidence: 0.90,
+  },
+
+  // ORDER rules (Bestellung)
+  {
+    categoryCode: 'ORDER',
+    name: 'Bestellbestätigung',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(bestellbestätigung|order confirmation|ihre bestellung)',
+    priority: 100,
+    confidence: 0.95,
+  },
+  {
+    categoryCode: 'ORDER',
+    name: 'Versandbestätigung',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(versand|shipped|auf dem weg|tracking|sendungsverfolgung)',
+    priority: 95,
+    confidence: 0.90,
+  },
+  {
+    categoryCode: 'ORDER',
+    name: 'Lieferung',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(lieferung|delivery|paket|package)',
+    priority: 90,
+    confidence: 0.85,
+  },
+
   // APPOINTMENT rules
   {
     categoryCode: 'APPOINTMENT',
@@ -180,6 +318,15 @@ export const DEFAULT_RULES: DefaultRule[] = [
     pattern: 'calendar event',
     priority: 90,
     confidence: 0.85,
+  },
+  {
+    categoryCode: 'APPOINTMENT',
+    name: 'Zoom/Teams Meeting',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(zoom|teams|webex|google meet).*(meeting|besprechung)',
+    priority: 95,
+    confidence: 0.90,
   },
 
   // NEWSLETTER rules
@@ -248,6 +395,15 @@ export const DEFAULT_RULES: DefaultRule[] = [
     field: 'SUBJECT',
     pattern: '(bitte prüfen|please review|zur durchsicht)',
     priority: 90,
+    confidence: 0.80,
+  },
+  {
+    categoryCode: 'TODO',
+    name: 'Feedback erbeten',
+    type: 'REGEX',
+    field: 'SUBJECT',
+    pattern: '(feedback|rückmeldung|antwort erbeten)',
+    priority: 85,
     confidence: 0.80,
   },
 
@@ -327,6 +483,9 @@ export const PROCESSING_LIMITS = {
 
 export const DEFAULT_LABEL_NAMES: Record<CategoryCode, string> = {
   INVOICE: 'EmailCat/Rechnung',
+  INQUIRY: 'EmailCat/Anfrage',
+  DOCUMENT_APPROVAL: 'EmailCat/Freigabe',
+  ORDER: 'EmailCat/Bestellung',
   APPOINTMENT: 'EmailCat/Termin',
   CUSTOMER: 'EmailCat/Kunde',
   LEAD: 'EmailCat/Lead',
