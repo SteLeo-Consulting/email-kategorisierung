@@ -3,8 +3,6 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
@@ -13,25 +11,15 @@ export const runtime = 'nodejs';
  * GET /api/stats - Get dashboard statistics
  */
 export async function GET(request: NextRequest) {
-  // Try NextAuth session first
-  let userEmail: string | null = null;
-
-  const session = await getServerSession(authOptions);
-  if (session?.user?.email) {
-    userEmail = session.user.email;
-  }
-
-  // If no NextAuth session, try to get email from query param (for localStorage-based auth)
-  if (!userEmail) {
-    userEmail = request.nextUrl.searchParams.get('email');
-  }
+  // Get email from query param (for localStorage-based auth)
+  const userEmail = request.nextUrl.searchParams.get('email');
 
   if (!userEmail) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: userEmail },
+    where: { email: userEmail.toLowerCase() },
   });
 
   if (!user) {
