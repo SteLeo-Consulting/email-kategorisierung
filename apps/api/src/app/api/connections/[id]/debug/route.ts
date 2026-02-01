@@ -81,23 +81,56 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (sortedUids.length > 0) {
       try {
-        // Try fetching with different approaches
-        const fetchOptions = {
-          uid: true,
-          envelope: true,
-          flags: true,
-        };
-        console.log('[DEBUG] Fetching with options:', fetchOptions);
+        // ImapFlow fetch expects a string range or array - try string format
+        const uidRangeStr = sortedUids.join(',');
+        console.log('[DEBUG] Fetching UIDs as string:', uidRangeStr);
 
-        for await (const msg of client.fetch(sortedUids, fetchOptions)) {
-          console.log('[DEBUG] Got message:', msg.uid, msg.envelope?.subject);
-          messages.push({
-            uid: msg.uid,
-            subject: msg.envelope?.subject,
-            from: msg.envelope?.from?.[0]?.address,
-            date: msg.envelope?.date,
-            flags: msg.flags ? Array.from(msg.flags) : [],
-          });
+        // Also try fetching just one UID to see if it works
+        const testUid = sortedUids[0];
+        let singleFetchWorked = false;
+
+        // Try single UID first
+        try {
+          for await (const msg of client.fetch(String(testUid), {
+            uid: true,
+            envelope: true,
+            flags: true,
+          })) {
+            console.log('[DEBUG] Single fetch got message:', msg.uid);
+            singleFetchWorked = true;
+            messages.push({
+              uid: msg.uid,
+              subject: msg.envelope?.subject,
+              from: msg.envelope?.from?.[0]?.address,
+              date: msg.envelope?.date,
+              flags: msg.flags ? Array.from(msg.flags) : [],
+            });
+          }
+        } catch (singleErr: any) {
+          console.log('[DEBUG] Single fetch failed:', singleErr.message);
+        }
+
+        // If single worked, try the rest
+        if (singleFetchWorked && sortedUids.length > 1) {
+          for (const uid of sortedUids.slice(1)) {
+            try {
+              for await (const msg of client.fetch(String(uid), {
+                uid: true,
+                envelope: true,
+                flags: true,
+              })) {
+                messages.push({
+                  uid: msg.uid,
+                  subject: msg.envelope?.subject,
+                  from: msg.envelope?.from?.[0]?.address,
+                  date: msg.envelope?.date,
+                  flags: msg.flags ? Array.from(msg.flags) : [],
+                });
+              }
+            } catch {
+              // Skip failed UIDs
+            }
+          }
         }
       } catch (fetchError: any) {
         console.error('[DEBUG] Fetch error:', fetchError);
