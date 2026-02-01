@@ -77,14 +77,6 @@ export class EmailProcessor {
       this.classifier = new EmailClassifier(connection.userId);
       await this.classifier.initialize();
 
-      // Get list of already processed message IDs for this connection
-      const processedMessages = await prisma.processedMessage.findMany({
-        where: { connectionId: this.connectionId },
-        select: { messageId: true },
-      });
-      const processedMessageIds = new Set(processedMessages.map((m) => m.messageId));
-      console.log(`[Processor] Found ${processedMessageIds.size} already processed messages`);
-
       // Fetch ALL messages from INBOX (no date filter)
       // This ensures we process all uncategorized emails
       const fetchResult = await this.provider.fetchMessages({
@@ -94,10 +86,49 @@ export class EmailProcessor {
 
       console.log(`[Processor] Fetched ${fetchResult.messages.length} messages from mailbox`);
 
-      // Filter to only unprocessed messages (unless forceReprocess is enabled)
-      const messagesToProcess = this.options.forceReprocess
-        ? fetchResult.messages
-        : fetchResult.messages.filter((m) => !processedMessageIds.has(m.id));
+      // Get the current message IDs from the mailbox
+      const currentMailboxIds = new Set(fetchResult.messages.map((m) => m.id));
+
+      // Get list of already processed message IDs for this connection
+      const processedMessages = await prisma.processedMessage.findMany({
+        where: { connectionId: this.connectionId },
+        select: { id: true, messageId: true, labelApplied: true },
+      });
+
+      // Identify messages that need processing:
+      // 1. Messages not in the processed list at all
+      // 2. Messages that were processed but labelApplied is null (failed previously)
+      // 3. All messages if forceReprocess is enabled
+      const processedMessageIds = new Set(processedMessages.map((m) => m.messageId));
+      const messagesWithoutLabels = new Set(
+        processedMessages.filter((m) => m.labelApplied === null).map((m) => m.messageId)
+      );
+
+      console.log(`[Processor] Found ${processedMessageIds.size} already processed messages`);
+      console.log(`[Processor] Found ${messagesWithoutLabels.size} messages without labels (need retry)`);
+
+      // Clean up orphaned records (processed messages that no longer exist in mailbox)
+      const orphanedRecords = processedMessages.filter((m) => !currentMailboxIds.has(m.messageId));
+      if (orphanedRecords.length > 0) {
+        console.log(`[Processor] Cleaning up ${orphanedRecords.length} orphaned processed message records`);
+        await prisma.processedMessage.deleteMany({
+          where: {
+            id: { in: orphanedRecords.map((r) => r.id) },
+          },
+        });
+      }
+
+      // Determine which messages to process
+      let messagesToProcess: typeof fetchResult.messages;
+      if (this.options.forceReprocess) {
+        // Process all messages
+        messagesToProcess = fetchResult.messages;
+      } else {
+        // Process: new messages OR messages that previously failed to get labels
+        messagesToProcess = fetchResult.messages.filter(
+          (m) => !processedMessageIds.has(m.id) || messagesWithoutLabels.has(m.id)
+        );
+      }
 
       console.log(`[Processor] ${messagesToProcess.length} messages need processing`);
 
@@ -174,13 +205,15 @@ export class EmailProcessor {
       },
     });
 
-    if (existing && !this.options.forceReprocess) {
-      // Already processed - skip (unless forceReprocess is enabled)
-      return { labeled: false, needsReview: false };
+    // Skip if already processed WITH a label applied (unless forceReprocess)
+    if (existing && existing.labelApplied && !this.options.forceReprocess) {
+      // Already processed successfully - skip
+      return { labeled: false, needsReview: existing.needsReview };
     }
 
-    // If forceReprocess and exists, delete the old record first
-    if (existing && this.options.forceReprocess) {
+    // If forceReprocess or if previous attempt failed (no label), delete old record
+    if (existing) {
+      console.log(`[Processor] Deleting old record for message ${message.id} (labelApplied was: ${existing.labelApplied})`);
       await prisma.processedMessage.delete({
         where: { id: existing.id },
       });
