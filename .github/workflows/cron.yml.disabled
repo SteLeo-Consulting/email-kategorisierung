@@ -16,11 +16,15 @@ on:
   # Erlaubt manuelle Ausführung für Tests
   workflow_dispatch:
 
+  # Prevent "No jobs were run" failures on push events
+  # This trigger is intentionally set to never match any files
+  push:
+    paths:
+      - '.github/workflows/cron-trigger-never-matches-this-path.yml'
+
 jobs:
   process-emails:
     runs-on: ubuntu-latest
-    # Job nur ausführen bei manueller Auslösung
-    if: github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Check Configuration

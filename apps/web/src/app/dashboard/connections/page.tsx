@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { formatDate, getProviderDisplayName } from '@/lib/utils';
 import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface Connection {
   id: string;
@@ -54,6 +55,8 @@ interface Connection {
 export default function ConnectionsPage() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
   const [imapDialogOpen, setImapDialogOpen] = useState(false);
   const [imapForm, setImapForm] = useState({
     host: 'imap.strato.de',
@@ -64,6 +67,7 @@ export default function ConnectionsPage() {
   });
   const { toast } = useToast();
   const userEmail = useUserEmail();
+  const { t } = useSettings();
 
   const fetchConnections = async () => {
     if (!userEmail) return;
@@ -117,6 +121,7 @@ export default function ConnectionsPage() {
   };
 
   const handleTest = async (id: string) => {
+    setTestingId(id);
     try {
       const res = await fetch(buildApiUrl(`/api/connections/${id}/test`, userEmail), {
         method: 'POST',
@@ -135,10 +140,13 @@ export default function ConnectionsPage() {
       }
     } catch (error) {
       toast({ title: 'Fehler beim Testen', variant: 'destructive' });
+    } finally {
+      setTestingId(null);
     }
   };
 
   const handleProcess = async (id: string, reprocessAll = false) => {
+    setProcessingId(id);
     try {
       toast({
         title: reprocessAll ? 'Verarbeite alle E-Mails...' : 'Verarbeitung gestartet...',
@@ -177,6 +185,8 @@ export default function ConnectionsPage() {
         description: 'Netzwerkfehler - bitte erneut versuchen',
         variant: 'destructive'
       });
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -222,9 +232,9 @@ export default function ConnectionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Verbindungen</h1>
+          <h1 className="text-3xl font-bold">{t('connections.title')}</h1>
           <p className="text-muted-foreground">
-            Verwalte deine E-Mail-Provider-Verbindungen
+            {t('connections.subtitle')}
           </p>
         </div>
       </div>
@@ -316,9 +326,9 @@ export default function ConnectionsPage() {
       {/* Existing Connections */}
       <Card>
         <CardHeader>
-          <CardTitle>Aktive Verbindungen</CardTitle>
+          <CardTitle>{t('connections.activeConnections')}</CardTitle>
           <CardDescription>
-            {connections.length} Verbindung(en) konfiguriert
+            {connections.length} {t('connections.connectionsConfigured')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -352,30 +362,42 @@ export default function ConnectionsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleTest(conn.id)}
+                          disabled={testingId === conn.id || processingId === conn.id}
                           title="Verbindung testen"
                         >
-                          <CheckCircle className="h-4 w-4" />
+                          {testingId === conn.id ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleProcess(conn.id, false)}
+                          disabled={processingId === conn.id || testingId === conn.id}
                           title="Neue E-Mails verarbeiten"
                         >
-                          <Play className="h-4 w-4" />
+                          {processingId === conn.id ? (
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleProcess(conn.id, true)}
+                          disabled={processingId === conn.id || testingId === conn.id}
                           title="Alle E-Mails erneut verarbeiten"
                         >
-                          <RefreshCw className="h-4 w-4" />
+                          <RefreshCw className={`h-4 w-4 ${processingId === conn.id ? 'animate-spin' : ''}`} />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(conn.id)}
+                          disabled={processingId === conn.id || testingId === conn.id}
                           title="Löschen"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />

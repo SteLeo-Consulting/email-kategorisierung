@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { RefreshCw, Check, X, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDate, truncate } from '@/lib/utils';
 import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface ProcessedMessage {
   id: string;
@@ -60,6 +61,7 @@ export default function ReviewPage() {
   const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const userEmail = useUserEmail();
+  const { t } = useSettings();
 
   const fetchData = async () => {
     if (!userEmail) return;
@@ -139,22 +141,22 @@ export default function ReviewPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">E-Mails prüfen</h1>
+          <h1 className="text-3xl font-bold">{t('review.title')}</h1>
           <p className="text-muted-foreground">
-            E-Mails mit niedriger Klassifizierungswahrscheinlichkeit
+            {t('review.subtitle')}
           </p>
         </div>
         <Button variant="outline" onClick={fetchData}>
           <RefreshCw className="h-4 w-4 mr-2" />
-          Aktualisieren
+          {t('refresh')}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Zur Prüfung ({messages.length})</CardTitle>
+          <CardTitle>{t('review.forReview')} ({messages.length})</CardTitle>
           <CardDescription>
-            Bestätige oder ändere die vorgeschlagene Kategorie
+            {t('review.reviewDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>

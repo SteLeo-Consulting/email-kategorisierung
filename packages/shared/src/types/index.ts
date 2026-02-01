@@ -28,7 +28,7 @@ export const CategoryCodeEnum = z.enum([
 ]);
 export type CategoryCode = z.infer<typeof CategoryCodeEnum>;
 
-export const RuleTypeEnum = z.enum(['KEYWORD', 'REGEX', 'SENDER', 'SUBJECT', 'COMBINED']);
+export const RuleTypeEnum = z.enum(['KEYWORD', 'REGEX', 'SENDER', 'SUBJECT', 'COMBINED', 'LLM']);
 export type RuleType = z.infer<typeof RuleTypeEnum>;
 
 export const RuleFieldEnum = z.enum(['FROM', 'TO', 'SUBJECT', 'BODY', 'ANY']);
@@ -93,7 +93,9 @@ export const IMAPConfigSchema = z.object({
   port: z.number().default(993),
   secure: z.boolean().default(true),
   useFolders: z.boolean().default(true), // IMAP uses folders by default
-  folderPrefix: z.string().optional(), // e.g., "INBOX/" or "EmailCat/"
+  // NOTE: folderPrefix is intentionally empty by default - EmailCat creates
+  // category folders directly at root level, NOT in an "EmailCat" namespace
+  folderPrefix: z.string().optional(),
 });
 
 export type GmailConfig = z.infer<typeof GmailConfigSchema>;
@@ -254,7 +256,7 @@ export type AuditAction = z.infer<typeof AuditActionEnum>;
 // LLM TYPES
 // =============================================================================
 
-export const LLMProviderEnum = z.enum(['openai', 'anthropic', 'none']);
+export const LLMProviderEnum = z.enum(['openai', 'anthropic', 'mistral', 'groq', 'none']);
 export type LLMProvider = z.infer<typeof LLMProviderEnum>;
 
 export interface LLMClassificationRequest {

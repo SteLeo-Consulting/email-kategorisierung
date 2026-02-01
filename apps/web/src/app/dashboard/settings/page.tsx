@@ -24,6 +24,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { RefreshCw, Plus, Trash2, Key, Sparkles, CheckCircle, XCircle } from 'lucide-react';
 import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface LLMProvider {
   id: string;
@@ -57,6 +58,7 @@ export default function SettingsPage() {
   });
   const { toast } = useToast();
   const userEmail = useUserEmail();
+  const { t } = useSettings();
 
   const fetchProviders = async () => {
     if (!userEmail) return;
@@ -189,7 +191,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Einstellungen</h1>
+          <h1 className="text-3xl font-bold">{t('settings')}</h1>
           <p className="text-muted-foreground">
             LLM-APIs und andere Konfigurationen
           </p>

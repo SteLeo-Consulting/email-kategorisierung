@@ -32,11 +32,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, RefreshCw, Trash2, Sparkles } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, Sparkles, Edit } from 'lucide-react';
 import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface Rule {
   id: string;
+  categoryId: string;
   name: string;
   type: string;
   field: string;
@@ -47,6 +49,7 @@ interface Rule {
   isActive: boolean;
   useLLM?: boolean;
   category: {
+    id: string;
     name: string;
     internalCode: string;
     color: string;
@@ -65,6 +68,7 @@ export default function RulesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [form, setForm] = useState({
     categoryId: '',
     name: '',
@@ -78,6 +82,7 @@ export default function RulesPage() {
   });
   const { toast } = useToast();
   const userEmail = useUserEmail();
+  const { t } = useSettings();
 
   const fetchData = async () => {
     if (!userEmail) return;
@@ -181,6 +186,87 @@ export default function RulesPage() {
     }
   };
 
+  const handleEdit = (rule: Rule) => {
+    setEditingRule(rule);
+    setForm({
+      categoryId: rule.categoryId || rule.category.id,
+      name: rule.name,
+      type: rule.type,
+      field: rule.field,
+      pattern: rule.pattern,
+      caseSensitive: rule.caseSensitive,
+      priority: rule.priority,
+      confidence: rule.confidence,
+      useLLM: rule.type === 'LLM',
+    });
+  };
+
+  const handleUpdate = async () => {
+    if (!editingRule || !userEmail) return;
+
+    try {
+      const res = await fetch(buildApiUrl(`/api/rules/${editingRule.id}`, userEmail), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          type: form.type,
+          field: form.field,
+          pattern: form.pattern,
+          caseSensitive: form.caseSensitive,
+          priority: form.priority,
+          confidence: form.confidence,
+        }),
+      });
+
+      if (res.ok) {
+        toast({ title: 'Regel aktualisiert' });
+        setEditingRule(null);
+        setForm({
+          categoryId: '',
+          name: '',
+          type: 'KEYWORD',
+          field: 'ANY',
+          pattern: '',
+          caseSensitive: false,
+          priority: 50,
+          confidence: 0.85,
+          useLLM: false,
+        });
+        fetchData();
+      } else {
+        const error = await res.json();
+        toast({
+          title: 'Fehler',
+          description: error.error || 'Regel konnte nicht aktualisiert werden',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Fehler',
+        description: 'Netzwerkfehler',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingRule(null);
+    setForm({
+      categoryId: '',
+      name: '',
+      type: 'KEYWORD',
+      field: 'ANY',
+      pattern: '',
+      caseSensitive: false,
+      priority: 50,
+      confidence: 0.85,
+      useLLM: false,
+    });
+  };
+
   if (loading || !userEmail) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -193,49 +279,62 @@ export default function RulesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Klassifikationsregeln</h1>
+          <h1 className="text-3xl font-bold">{t('rules.title')}</h1>
           <p className="text-muted-foreground">
-            Regeln für die automatische E-Mail-Kategorisierung
+            {t('rules.subtitle')}
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen || !!editingRule} onOpenChange={(open) => !open && closeDialog()}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Neue Regel
+              {t('rules.newRule')}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Neue Regel erstellen</DialogTitle>
+              <DialogTitle>{editingRule ? 'Regel bearbeiten' : 'Neue Regel erstellen'}</DialogTitle>
               <DialogDescription>
-                Definiere ein Muster zur automatischen Kategorisierung
+                {editingRule
+                  ? `Bearbeite die Regel "${editingRule.name}"`
+                  : 'Definiere ein Muster zur automatischen Kategorisierung'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Kategorie</Label>
-                <Select
-                  value={form.categoryId}
-                  onValueChange={(v) => setForm({ ...form, categoryId: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Kategorie wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                          {cat.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {editingRule ? (
+                  <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: editingRule.category.color }}
+                    />
+                    <span className="text-muted-foreground">{editingRule.category.name}</span>
+                    <span className="text-xs text-muted-foreground ml-auto">(nicht änderbar)</span>
+                  </div>
+                ) : (
+                  <Select
+                    value={form.categoryId}
+                    onValueChange={(v) => setForm({ ...form, categoryId: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Kategorie wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: cat.color }}
+                            />
+                            {cat.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -345,12 +444,18 @@ export default function RulesPage() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button variant="outline" onClick={closeDialog}>
                 Abbrechen
               </Button>
-              <Button onClick={handleCreate} disabled={!form.categoryId || !form.name || !form.pattern}>
-                Erstellen
-              </Button>
+              {editingRule ? (
+                <Button onClick={handleUpdate} disabled={!form.name || !form.pattern}>
+                  Speichern
+                </Button>
+              ) : (
+                <Button onClick={handleCreate} disabled={!form.categoryId || !form.name || !form.pattern}>
+                  Erstellen
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -409,13 +514,24 @@ export default function RulesPage() {
                       />
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(rule.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(rule)}
+                          title="Bearbeiten"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(rule.id)}
+                          title="Löschen"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

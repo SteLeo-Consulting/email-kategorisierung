@@ -20,10 +20,12 @@ export class IMAPProvider extends EmailProvider {
   private useFolders: boolean;
   private folderPrefix: string;
 
-  constructor(credentials: IMAPCredentials, useFolders = true, folderPrefix = 'EmailCat') {
+  constructor(credentials: IMAPCredentials, useFolders = true, folderPrefix = '') {
     super();
     this.credentials = credentials;
     this.useFolders = useFolders;
+    // No prefix by default - categories are created directly at IMAP root level
+    // This ensures EmailCat doesn't create its own namespace
     this.folderPrefix = folderPrefix;
   }
 
@@ -156,10 +158,13 @@ export class IMAPProvider extends EmailProvider {
   async createLabel(name: string): Promise<LabelInfo> {
     try {
       const client = await this.getClient();
-      const folderPath = this.useFolders ? `${this.folderPrefix}/${name}` : name;
+      // Create folder path - only use prefix if it's specified
+      const folderPath = this.useFolders && this.folderPrefix
+        ? `${this.folderPrefix}/${name}`
+        : name;
 
-      // Create the parent folder if needed
-      if (this.useFolders) {
+      // Create the parent folder if needed (only if prefix is set)
+      if (this.useFolders && this.folderPrefix) {
         try {
           await client.mailboxCreate(this.folderPrefix);
         } catch {
@@ -178,7 +183,9 @@ export class IMAPProvider extends EmailProvider {
     } catch (error: any) {
       // If folder already exists, return it
       if (error.code === 'ALREADYEXISTS' || error.message?.includes('already exists')) {
-        const folderPath = this.useFolders ? `${this.folderPrefix}/${name}` : name;
+        const folderPath = this.useFolders && this.folderPrefix
+          ? `${this.folderPrefix}/${name}`
+          : name;
         return {
           id: folderPath,
           name: name,
@@ -268,17 +275,18 @@ export class IMAPProvider extends EmailProvider {
 
   /**
    * Get or create a folder by name
-   * Name can be either just the label (e.g., "Rechnung") or full path (e.g., "EmailCat/Rechnung")
+   * Name should be the category name directly (e.g., "Rechnung")
+   * EmailCat does NOT create its own namespace - categories are created directly
    */
   async getOrCreateLabel(name: string): Promise<LabelInfo> {
     const labels = await this.getLabels();
 
-    // Check if name is already a full path with prefix
+    // Determine folder path based on prefix setting
     let folderPath: string;
     let labelName: string;
 
-    if (name.startsWith(this.folderPrefix + '/')) {
-      // Full path provided (e.g., "EmailCat/Rechnung")
+    if (this.folderPrefix && name.startsWith(this.folderPrefix + '/')) {
+      // Full path provided with prefix (legacy support)
       folderPath = name;
       labelName = name.substring(this.folderPrefix.length + 1);
     } else if (name.includes('/')) {
@@ -286,9 +294,11 @@ export class IMAPProvider extends EmailProvider {
       folderPath = name;
       labelName = name.split('/').pop() || name;
     } else {
-      // Just the label name provided
-      folderPath = this.useFolders ? `${this.folderPrefix}/${name}` : name;
+      // Just the label name provided - use it directly or with prefix if set
       labelName = name;
+      folderPath = this.useFolders && this.folderPrefix
+        ? `${this.folderPrefix}/${name}`
+        : name;
     }
 
     // Check for existing folder

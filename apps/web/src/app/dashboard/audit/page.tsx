@@ -15,6 +15,7 @@ import {
 import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface AuditLog {
   id: string;
@@ -35,6 +36,7 @@ export default function AuditPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const userEmail = useUserEmail();
+  const { t } = useSettings();
 
   const fetchLogs = async () => {
     if (!userEmail) return;
@@ -94,22 +96,22 @@ export default function AuditPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Audit Log</h1>
+          <h1 className="text-3xl font-bold">{t('audit.title')}</h1>
           <p className="text-muted-foreground">
-            Protokoll aller Systemaktivitäten
+            {t('audit.subtitle')}
           </p>
         </div>
         <Button variant="outline" onClick={fetchLogs}>
           <RefreshCw className="h-4 w-4 mr-2" />
-          Aktualisieren
+          {t('refresh')}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Aktivitäten</CardTitle>
+          <CardTitle>{t('audit.activities')}</CardTitle>
           <CardDescription>
-            Alle Aktionen im System werden hier protokolliert
+            {t('audit.activitiesDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
