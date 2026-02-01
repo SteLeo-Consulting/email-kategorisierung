@@ -3,30 +3,21 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { CreateIMAPCredentialSchema, encrypt } from '@/lib/shared';
 import { createAuditLog } from '@/lib/services/audit';
+import { getAuthenticatedUser } from '@/lib/auth-helper';
 
 export const runtime = 'nodejs';
 
 /**
  * GET /api/connections - List user's connections
  */
-export async function GET() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
+export async function GET(request: NextRequest) {
+  const { user, error } = await getAuthenticatedUser(request);
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
 
   const connections = await prisma.connection.findMany({
@@ -60,18 +51,10 @@ export async function GET() {
  * OAuth connections are created via the auth callback
  */
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
+  const { user, error } = await getAuthenticatedUser(request);
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
 
   try {

@@ -12,8 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { RefreshCw, Settings, FileText } from 'lucide-react';
+import { RefreshCw, Settings } from 'lucide-react';
 import Link from 'next/link';
+import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
 
 interface Category {
   id: string;
@@ -34,10 +35,13 @@ interface Category {
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const userEmail = useUserEmail();
 
   const fetchCategories = async () => {
+    if (!userEmail) return;
+
     try {
-      const res = await fetch('/api/categories');
+      const res = await fetch(buildApiUrl('/api/categories', userEmail));
       if (res.ok) {
         const data = await res.json();
         setCategories(data.categories);
@@ -50,10 +54,12 @@ export default function CategoriesPage() {
   };
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    if (userEmail) {
+      fetchCategories();
+    }
+  }, [userEmail]);
 
-  if (loading) {
+  if (loading && !userEmail) {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -67,14 +73,14 @@ export default function CategoriesPage() {
         <div>
           <h1 className="text-3xl font-bold">Kategorien</h1>
           <p className="text-muted-foreground">
-            Verwalte die E-Mail-Kategorien fuer die Klassifizierung
+            Verwalte die E-Mail-Kategorien für die Klassifizierung
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Verfuegbare Kategorien</CardTitle>
+          <CardTitle>Verfügbare Kategorien</CardTitle>
           <CardDescription>
             Diese Kategorien werden zur Klassifizierung verwendet
           </CardDescription>
@@ -146,7 +152,7 @@ export default function CategoriesPage() {
           <p>
             Die vordefinierten System-Kategorien (INVOICE, APPOINTMENT, etc.) wurden automatisch
             erstellt und enthalten bereits Standardregeln. Du kannst diese Regeln anpassen oder
-            neue hinzufuegen.
+            neue hinzufügen.
           </p>
           <div className="mt-4">
             <Link href="/dashboard/rules">

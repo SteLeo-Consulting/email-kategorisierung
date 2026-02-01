@@ -36,6 +36,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { formatDate, getProviderDisplayName } from '@/lib/utils';
+import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface Connection {
   id: string;
@@ -64,10 +66,13 @@ export default function ConnectionsPage() {
     password: '',
   });
   const { toast } = useToast();
+  const userEmail = useUserEmail();
 
   const fetchConnections = async () => {
+    if (!userEmail) return;
+
     try {
-      const res = await fetch('/api/connections');
+      const res = await fetch(buildApiUrl('/api/connections', userEmail));
       if (res.ok) {
         const data = await res.json();
         setConnections(data.connections);
@@ -80,12 +85,14 @@ export default function ConnectionsPage() {
   };
 
   useEffect(() => {
-    fetchConnections();
-  }, []);
+    if (userEmail) {
+      fetchConnections();
+    }
+  }, [userEmail]);
 
   const handleAddIMAP = async () => {
     try {
-      const res = await fetch('/api/connections', {
+      const res = await fetch(buildApiUrl('/api/connections', userEmail), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(imapForm),
@@ -114,7 +121,7 @@ export default function ConnectionsPage() {
 
   const handleTest = async (id: string) => {
     try {
-      const res = await fetch(`/api/connections/${id}/test`, {
+      const res = await fetch(buildApiUrl(`/api/connections/${id}/test`, userEmail), {
         method: 'POST',
       });
 
@@ -138,7 +145,7 @@ export default function ConnectionsPage() {
     try {
       toast({ title: 'Verarbeitung gestartet...' });
 
-      const res = await fetch(`/api/connections/${id}/process`, {
+      const res = await fetch(buildApiUrl(`/api/connections/${id}/process`, userEmail), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ maxEmails: 10 }),
@@ -167,7 +174,7 @@ export default function ConnectionsPage() {
     if (!confirm('Verbindung wirklich loeschen?')) return;
 
     try {
-      const res = await fetch(`/api/connections/${id}`, {
+      const res = await fetch(buildApiUrl(`/api/connections/${id}`, userEmail), {
         method: 'DELETE',
       });
 
@@ -193,7 +200,7 @@ export default function ConnectionsPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !userEmail) {
     return (
       <div className="flex items-center justify-center h-64">
         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />

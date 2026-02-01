@@ -12,15 +12,26 @@ export const runtime = 'nodejs';
 /**
  * GET /api/stats - Get dashboard statistics
  */
-export async function GET() {
-  const session = await getServerSession(authOptions);
+export async function GET(request: NextRequest) {
+  // Try NextAuth session first
+  let userEmail: string | null = null;
 
-  if (!session?.user?.email) {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.email) {
+    userEmail = session.user.email;
+  }
+
+  // If no NextAuth session, try to get email from query param (for localStorage-based auth)
+  if (!userEmail) {
+    userEmail = request.nextUrl.searchParams.get('email');
+  }
+
+  if (!userEmail) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { email: userEmail },
   });
 
   if (!user) {
@@ -107,20 +118,20 @@ export async function GET() {
   ]);
 
   // Get category names for breakdown
-  const categoryIds = categoryBreakdown.map((c) => c.categoryId).filter(Boolean) as string[];
+  const categoryIds = categoryBreakdown.map((c: any) => c.categoryId).filter(Boolean) as string[];
   const categoryNames = await prisma.category.findMany({
     where: { id: { in: categoryIds } },
     select: { id: true, name: true, color: true },
   });
 
-  const categoryMap = new Map(categoryNames.map((c) => [c.id, c]));
+  const categoryMap = new Map(categoryNames.map((c: any) => [c.id, c]));
 
   return NextResponse.json({
     connections: {
-      total: connections.reduce((sum, c) => sum + c._count, 0),
-      active: connections.find((c) => c.status === 'ACTIVE')?._count || 0,
-      error: connections.find((c) => c.status === 'ERROR')?._count || 0,
-      needsReauth: connections.find((c) => c.status === 'NEEDS_REAUTH')?._count || 0,
+      total: connections.reduce((sum: number, c: any) => sum + c._count, 0),
+      active: connections.find((c: any) => c.status === 'ACTIVE')?._count || 0,
+      error: connections.find((c: any) => c.status === 'ERROR')?._count || 0,
+      needsReauth: connections.find((c: any) => c.status === 'NEEDS_REAUTH')?._count || 0,
     },
     categories,
     rules,
@@ -129,7 +140,7 @@ export async function GET() {
       total: processedTotal,
     },
     needsReview,
-    categoryBreakdown: categoryBreakdown.map((c) => ({
+    categoryBreakdown: categoryBreakdown.map((c: any) => ({
       categoryId: c.categoryId,
       categoryName: categoryMap.get(c.categoryId!)?.name || 'Unknown',
       color: categoryMap.get(c.categoryId!)?.color || '#6366f1',

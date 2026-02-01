@@ -1,10 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/contexts/SettingsContext';
 import {
   LayoutDashboard,
   Link as LinkIcon,
@@ -14,30 +21,41 @@ import {
   AlertCircle,
   LogOut,
   Mail,
+  Globe,
+  Moon,
+  Sun,
+  Monitor,
 } from 'lucide-react';
 
 interface DashboardNavProps {
   user: any;
 }
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/connections', label: 'Verbindungen', icon: LinkIcon },
-  { href: '/dashboard/categories', label: 'Kategorien', icon: Tags },
-  { href: '/dashboard/rules', label: 'Regeln', icon: Settings },
-  { href: '/dashboard/review', label: 'Prüfen', icon: AlertCircle },
-  { href: '/dashboard/audit', label: 'Audit Log', icon: FileText },
-];
-
 export function DashboardNav({ user }: DashboardNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { t, language, setLanguage, theme, setTheme } = useSettings();
+
+  const navItems = [
+    { href: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { href: '/dashboard/connections', label: t('nav.connections'), icon: LinkIcon },
+    { href: '/dashboard/categories', label: t('nav.categories'), icon: Tags },
+    { href: '/dashboard/rules', label: t('nav.rules'), icon: Settings },
+    { href: '/dashboard/review', label: t('nav.review'), icon: AlertCircle },
+    { href: '/dashboard/audit', label: t('nav.auditLog'), icon: FileText },
+  ];
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    router.push('/auth/signin');
+  };
 
   return (
-    <nav className="border-b bg-white">
+    <nav className="border-b bg-white dark:bg-slate-900 dark:border-slate-800">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg">
+            <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg dark:text-white">
               <Mail className="h-6 w-6" />
               EmailCat
             </Link>
@@ -52,7 +70,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
                     <Button
                       variant={isActive ? 'secondary' : 'ghost'}
                       size="sm"
-                      className={cn('gap-2', isActive && 'bg-slate-100')}
+                      className={cn('gap-2', isActive && 'bg-slate-100 dark:bg-slate-800')}
                     >
                       <Icon className="h-4 w-4" />
                       {item.label}
@@ -63,17 +81,80 @@ export function DashboardNav({ user }: DashboardNavProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground hidden sm:block">
+          <div className="flex items-center gap-2">
+            {/* Language Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Globe className="h-4 w-4" />
+                  <span className="hidden sm:inline">{language.toUpperCase()}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setLanguage('de')}
+                  className={cn(language === 'de' && 'bg-slate-100 dark:bg-slate-800')}
+                >
+                  🇩🇪 Deutsch
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setLanguage('en')}
+                  className={cn(language === 'en' && 'bg-slate-100 dark:bg-slate-800')}
+                >
+                  🇬🇧 English
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Theme Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  {theme === 'dark' ? (
+                    <Moon className="h-4 w-4" />
+                  ) : theme === 'light' ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Monitor className="h-4 w-4" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setTheme('light')}
+                  className={cn(theme === 'light' && 'bg-slate-100 dark:bg-slate-800')}
+                >
+                  <Sun className="h-4 w-4 mr-2" />
+                  {t('theme.light')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setTheme('dark')}
+                  className={cn(theme === 'dark' && 'bg-slate-100 dark:bg-slate-800')}
+                >
+                  <Moon className="h-4 w-4 mr-2" />
+                  {t('theme.dark')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setTheme('system')}
+                  className={cn(theme === 'system' && 'bg-slate-100 dark:bg-slate-800')}
+                >
+                  <Monitor className="h-4 w-4 mr-2" />
+                  {t('theme.system')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <span className="text-sm text-muted-foreground hidden sm:block ml-2">
               {user?.email}
             </span>
+
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+              onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Abmelden
+              {t('logout')}
             </Button>
           </div>
         </div>

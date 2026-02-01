@@ -14,6 +14,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSettings } from '@/contexts/SettingsContext';
+import { useUserEmail, buildApiUrl } from '@/hooks/useUserEmail';
 
 interface Stats {
   connections: {
@@ -45,10 +47,17 @@ interface Stats {
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const userEmail = useUserEmail();
+  const { t } = useSettings();
 
   const fetchStats = async () => {
+    if (!userEmail) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch('/api/stats');
+      const res = await fetch(buildApiUrl('/api/stats', userEmail));
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -61,8 +70,10 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (userEmail) {
+      fetchStats();
+    }
+  }, [userEmail]);
 
   if (loading) {
     return (
@@ -76,14 +87,14 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
           <p className="text-muted-foreground">
-            Uebersicht ueber deine E-Mail-Kategorisierung
+            {t('dashboard.subtitle')}
           </p>
         </div>
         <Button onClick={fetchStats} variant="outline" size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
-          Aktualisieren
+          {t('refresh')}
         </Button>
       </div>
 
@@ -91,17 +102,17 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Verbindungen</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.connections')}</CardTitle>
             <LinkIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.connections.total || 0}</div>
             <div className="flex gap-2 mt-1">
               {(stats?.connections.active ?? 0) > 0 && (
-                <Badge variant="success">{stats?.connections.active} aktiv</Badge>
+                <Badge variant="success">{stats?.connections.active} {t('active')}</Badge>
               )}
               {(stats?.connections.error ?? 0) > 0 && (
-                <Badge variant="destructive">{stats?.connections.error} Fehler</Badge>
+                <Badge variant="destructive">{stats?.connections.error} {t('error')}</Badge>
               )}
             </div>
           </CardContent>
@@ -109,40 +120,40 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Heute verarbeitet</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.todayProcessed')}</CardTitle>
             <Mail className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.processed.today || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.processed.total || 0} insgesamt
+              {stats?.processed.total || 0} {t('dashboard.total')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Kategorien</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.categories')}</CardTitle>
             <Tags className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.categories || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.rules || 0} aktive Regeln
+              {stats?.rules || 0} {t('dashboard.activeRules')}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Zur Pruefung</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('dashboard.needsReview')}</CardTitle>
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.needsReview || 0}</div>
             <Link href="/dashboard/review">
               <Button variant="link" className="p-0 h-auto text-xs">
-                Jetzt pruefen
+                {t('dashboard.reviewNow')}
               </Button>
             </Link>
           </CardContent>
@@ -153,8 +164,8 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Kategorieverteilung</CardTitle>
-            <CardDescription>Verteilung der klassifizierten E-Mails</CardDescription>
+            <CardTitle>{t('dashboard.categoryDistribution')}</CardTitle>
+            <CardDescription>{t('dashboard.emailDistribution')}</CardDescription>
           </CardHeader>
           <CardContent>
             {stats?.categoryBreakdown && stats.categoryBreakdown.length > 0 ? (
@@ -174,7 +185,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Noch keine E-Mails klassifiziert
+                {t('dashboard.noEmailsClassified')}
               </p>
             )}
           </CardContent>
@@ -182,8 +193,8 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Letzte Aktivitaeten</CardTitle>
-            <CardDescription>Die letzten Aktionen im System</CardDescription>
+            <CardTitle>{t('dashboard.recentActivity')}</CardTitle>
+            <CardDescription>{t('dashboard.recentActivityDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             {stats?.recentActivity && stats.recentActivity.length > 0 ? (
@@ -212,7 +223,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Keine Aktivitaeten</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.noActivity')}</p>
             )}
           </CardContent>
         </Card>
@@ -221,25 +232,25 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Schnellaktionen</CardTitle>
+          <CardTitle>{t('dashboard.quickActions')}</CardTitle>
         </CardHeader>
         <CardContent className="flex gap-3">
           <Link href="/dashboard/connections">
             <Button>
               <LinkIcon className="h-4 w-4 mr-2" />
-              Verbindung hinzufuegen
+              {t('dashboard.addConnection')}
             </Button>
           </Link>
           <Link href="/dashboard/rules">
             <Button variant="outline">
               <Tags className="h-4 w-4 mr-2" />
-              Regel erstellen
+              {t('dashboard.createRule')}
             </Button>
           </Link>
           <Link href="/dashboard/review">
             <Button variant="outline">
               <AlertCircle className="h-4 w-4 mr-2" />
-              E-Mails pruefen
+              {t('dashboard.reviewEmails')}
             </Button>
           </Link>
         </CardContent>

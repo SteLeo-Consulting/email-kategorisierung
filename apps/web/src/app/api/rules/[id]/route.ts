@@ -3,11 +3,10 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { UpdateRuleSchema } from '@/lib/shared';
 import { createAuditLog } from '@/lib/services/audit';
+import { getAuthenticatedUser } from '@/lib/auth-helper';
 
 export const runtime = 'nodejs';
 
@@ -19,18 +18,10 @@ interface RouteParams {
  * GET /api/rules/[id] - Get rule details
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
+  const { user, error } = await getAuthenticatedUser(request);
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
 
   const rule = await prisma.rule.findFirst({
@@ -56,18 +47,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * PATCH /api/rules/[id] - Update rule
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
+  const { user, error } = await getAuthenticatedUser(request);
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
 
   const rule = await prisma.rule.findFirst({
@@ -140,18 +123,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/rules/[id] - Delete rule
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
+  const { user, error } = await getAuthenticatedUser(request);
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
 
   const rule = await prisma.rule.findFirst({

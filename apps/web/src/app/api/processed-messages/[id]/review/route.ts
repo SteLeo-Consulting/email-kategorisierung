@@ -3,12 +3,11 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/services/audit';
 import { createProviderFromConnection } from '@/lib/providers';
 import { DEFAULT_LABEL_NAMES } from '@/lib/shared';
+import { getAuthenticatedUser } from '@/lib/auth-helper';
 
 export const runtime = 'nodejs';
 
@@ -20,18 +19,10 @@ interface RouteParams {
  * POST /api/processed-messages/[id]/review - Review and update classification
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
+  const { user, error } = await getAuthenticatedUser(request);
 
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ error: error || 'Unauthorized' }, { status: 401 });
   }
 
   const message = await prisma.processedMessage.findFirst({
