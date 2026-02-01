@@ -124,7 +124,9 @@ export async function GET(request: NextRequest) {
     select: { id: true, name: true, color: true },
   });
 
-  const categoryMap = new Map(categoryNames.map((c: any) => [c.id, c]));
+  const categoryMap = new Map<string, { name: string; color: string }>(
+    categoryNames.map((c: any) => [c.id, { name: c.name, color: c.color }])
+  );
 
   return NextResponse.json({
     connections: {

@@ -89,7 +89,7 @@ export class LLMClassifier {
       },
     });
 
-    this.categories = dbCategories.map((c) => ({
+    this.categories = dbCategories.map((c: { internalCode: string; name: string; description: string | null }) => ({
       code: c.internalCode,
       name: c.name,
       description: c.description || undefined,

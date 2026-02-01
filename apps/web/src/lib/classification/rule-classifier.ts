@@ -50,7 +50,7 @@ export class RuleBasedClassifier {
       },
     });
 
-    this.rules = dbRules.map((r) => ({
+    this.rules = dbRules.map((r: any) => ({
       id: r.id,
       categoryId: r.categoryId,
       categoryCode: r.category.internalCode,
@@ -245,7 +245,7 @@ export async function createDefaultRules(userId: string): Promise<void> {
     where: { userId },
   });
 
-  const categoryMap = new Map(categories.map((c) => [c.internalCode, c.id]));
+  const categoryMap = new Map(categories.map((c: any) => [c.internalCode, c.id]));
 
   for (const rule of DEFAULT_RULES) {
     const categoryId = categoryMap.get(rule.categoryCode);
