@@ -37,6 +37,7 @@ export class EmailProcessor {
 
   /**
    * Process emails for a connection
+   * Fetches ALL emails from INBOX and processes only those not yet categorized
    */
   async process(): Promise<ProcessingResult> {
     const startTime = Date.now();
@@ -76,14 +77,32 @@ export class EmailProcessor {
       this.classifier = new EmailClassifier(connection.userId);
       await this.classifier.initialize();
 
-      // Fetch messages since last sync
+      // Get list of already processed message IDs for this connection
+      const processedMessages = await prisma.processedMessage.findMany({
+        where: { connectionId: this.connectionId },
+        select: { messageId: true },
+      });
+      const processedMessageIds = new Set(processedMessages.map((m) => m.messageId));
+      console.log(`[Processor] Found ${processedMessageIds.size} already processed messages`);
+
+      // Fetch ALL messages from INBOX (no date filter)
+      // This ensures we process all uncategorized emails
       const fetchResult = await this.provider.fetchMessages({
-        since: connection.lastSyncAt || undefined,
         maxResults: this.options.maxEmails,
+        // NO 'since' filter - we want ALL emails
       });
 
-      // Process each message
-      for (const message of fetchResult.messages) {
+      console.log(`[Processor] Fetched ${fetchResult.messages.length} messages from mailbox`);
+
+      // Filter to only unprocessed messages (unless forceReprocess is enabled)
+      const messagesToProcess = this.options.forceReprocess
+        ? fetchResult.messages
+        : fetchResult.messages.filter((m) => !processedMessageIds.has(m.id));
+
+      console.log(`[Processor] ${messagesToProcess.length} messages need processing`);
+
+      // Process each unprocessed message
+      for (const message of messagesToProcess) {
         try {
           const processed = await this.processMessage(message);
           result.messagesProcessed++;

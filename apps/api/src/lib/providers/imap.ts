@@ -74,11 +74,13 @@ export class IMAPProvider extends EmailProvider {
 
       console.log(`[IMAP] Mailbox has ${totalMessages} messages, fetching range ${range} (max: ${maxResults})`);
 
-      // Fetch using sequence numbers (NOT UIDs) - this works better with Strato
+      // Fetch messages with UIDs - we need UIDs for proper message identification
+      // and for applying labels later
       for await (const msg of client.fetch(range, {
         envelope: true,
         flags: true,
         bodyStructure: true,
+        uid: true, // Request UID
       }, { uid: false })) {
         const envelope = msg.envelope;
         if (!envelope) continue;
@@ -89,8 +91,15 @@ export class IMAPProvider extends EmailProvider {
           continue; // Skip messages older than since date
         }
 
+        // Use UID as the message ID (required for label operations)
+        const messageId = msg.uid?.toString() || '';
+        if (!messageId) {
+          console.warn(`[IMAP] Message without UID, seq=${msg.seq}, skipping`);
+          continue;
+        }
+
         messages.push({
-          id: msg.uid?.toString() || msg.seq?.toString() || '',
+          id: messageId,
           threadId: envelope.messageId || undefined,
           provider: 'IMAP',
           from: envelope.from?.[0]
