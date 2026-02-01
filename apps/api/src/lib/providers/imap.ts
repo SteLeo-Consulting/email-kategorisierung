@@ -70,7 +70,9 @@ export class IMAPProvider extends EmailProvider {
       // Limit results
       const maxResults = options.maxResults || 50;
       const uidArray = uids || [];
+      console.log(`[IMAP] Found ${uidArray.length} UIDs, using search criteria:`, searchCriteria);
       const limitedUids = uidArray.slice(0, maxResults);
+      console.log(`[IMAP] Processing ${limitedUids.length} UIDs (max: ${maxResults})`);
 
       if (limitedUids.length > 0) {
         // Fetch message details
