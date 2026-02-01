@@ -12,7 +12,17 @@
       "Bash(npx vercel:*)",
       "Bash(gh api:*)",
       "Bash(git commit:*)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(git fetch:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npm i:*)",
+      "Bash(npx prisma@5.7.0 generate:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(vercel --version:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel:*)"
     ]
   }
 }

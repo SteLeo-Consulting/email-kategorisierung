@@ -2,14 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
-  serverExternalPackages: ['@prisma/client', 'imapflow'],
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'imapflow'],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // API-only - no images needed
   images: {
     unoptimized: true,
   },

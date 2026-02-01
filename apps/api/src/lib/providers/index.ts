@@ -5,15 +5,9 @@
 import { decrypt } from '@/lib/shared';
 import { prisma } from '../prisma';
 import { EmailProvider, ProviderCredentials, IMAPCredentials } from './base';
-// Dynamic imports for Gmail and Outlook to reduce bundle size
-// import { GmailProvider } from './gmail';
-// import { OutlookProvider } from './outlook';
 import { IMAPProvider } from './imap';
 
 export * from './base';
-// Export providers lazily to avoid loading googleapis at build time
-export const getGmailProvider = async () => (await import('./gmail')).GmailProvider;
-export const getOutlookProvider = async () => (await import('./outlook')).OutlookProvider;
 export { IMAPProvider } from './imap';
 
 /**
@@ -35,38 +29,11 @@ export async function createProviderFromConnection(
   }
 
   switch (connection.provider) {
-    case 'GMAIL': {
-      if (!connection.oauthToken) {
-        throw new Error('No OAuth token for Gmail connection');
-      }
-      const credentials: ProviderCredentials = {
-        accessToken: decrypt(connection.oauthToken.accessToken),
-        refreshToken: connection.oauthToken.refreshToken
-          ? decrypt(connection.oauthToken.refreshToken)
-          : undefined,
-        expiresAt: connection.oauthToken.expiresAt || undefined,
-      };
-      // Dynamic import to avoid loading googleapis at build time
-      const { GmailProvider } = await import('./gmail');
-      return new GmailProvider(credentials);
-    }
+    case 'GMAIL':
+      throw new Error('Gmail OAuth is not supported in this version. Please use IMAP instead.');
 
-    case 'OUTLOOK': {
-      if (!connection.oauthToken) {
-        throw new Error('No OAuth token for Outlook connection');
-      }
-      const credentials: ProviderCredentials = {
-        accessToken: decrypt(connection.oauthToken.accessToken),
-        refreshToken: connection.oauthToken.refreshToken
-          ? decrypt(connection.oauthToken.refreshToken)
-          : undefined,
-        expiresAt: connection.oauthToken.expiresAt || undefined,
-      };
-      const useFolders = (connection.settings as any)?.useFolders === true;
-      // Dynamic import to reduce bundle size
-      const { OutlookProvider } = await import('./outlook');
-      return new OutlookProvider(credentials, useFolders);
-    }
+    case 'OUTLOOK':
+      throw new Error('Outlook OAuth is not supported in this version. Please use IMAP instead.');
 
     case 'IMAP': {
       if (!connection.imapCredential) {
