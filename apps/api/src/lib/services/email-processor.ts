@@ -187,10 +187,13 @@ export class EmailProcessor {
     }
 
     // Classify the message
+    console.log(`[Processor] Classifying message ${message.id}: "${message.subject}" from ${message.from}`);
     const classification = await this.classifier!.classify(message);
+    console.log(`[Processor] Classification result: category=${classification.category}, confidence=${classification.confidence}, by=${classification.classifiedBy}`);
 
     // Get label information
     const labelInfo = await getLabelForClassification(this.connectionId, classification);
+    console.log(`[Processor] Label info:`, labelInfo ? `labelId="${labelInfo.labelId}", categoryId=${labelInfo.categoryId}` : 'null');
 
     let labeled = false;
     let labelApplied: string | null = null;

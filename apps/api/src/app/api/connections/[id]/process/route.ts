@@ -48,12 +48,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
     }
 
+    console.log(`[Process API] Starting processing for connection ${params.id}, maxEmails=${maxEmails}, dryRun=${dryRun}, reprocessAll=${reprocessAll}`);
+
     const processor = new EmailProcessor(params.id, {
       maxEmails,
       dryRun,
       forceReprocess: reprocessAll, // If reprocessAll, also force reprocess existing
     });
     const result = await processor.process();
+
+    console.log(`[Process API] Processing complete:`, JSON.stringify(result, null, 2));
 
     return NextResponse.json({
       success: true,
@@ -62,6 +66,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         messagesLabeled: result.messagesLabeled,
         messagesReview: result.messagesReview,
         errors: result.errors.length,
+        errorDetails: result.errors.slice(0, 5), // Return first 5 errors for debugging
         duration: result.duration,
       },
     });
