@@ -48,7 +48,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    const processor = new EmailProcessor(params.id, { maxEmails, dryRun });
+    const processor = new EmailProcessor(params.id, {
+      maxEmails,
+      dryRun,
+      forceReprocess: reprocessAll, // If reprocessAll, also force reprocess existing
+    });
     const result = await processor.process();
 
     return NextResponse.json({

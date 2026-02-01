@@ -17,6 +17,7 @@ import { EmailClassifier, getLabelForClassification } from '../classification';
 export interface ProcessConnectionOptions {
   maxEmails?: number;
   dryRun?: boolean;
+  forceReprocess?: boolean; // Reprocess even if already processed
 }
 
 export class EmailProcessor {
@@ -30,6 +31,7 @@ export class EmailProcessor {
     this.options = {
       maxEmails: options.maxEmails ?? PROCESSING_LIMITS.MAX_EMAILS_PER_RUN,
       dryRun: options.dryRun ?? false,
+      forceReprocess: options.forceReprocess ?? false,
     };
   }
 
@@ -153,9 +155,16 @@ export class EmailProcessor {
       },
     });
 
-    if (existing) {
-      // Already processed - skip
+    if (existing && !this.options.forceReprocess) {
+      // Already processed - skip (unless forceReprocess is enabled)
       return { labeled: false, needsReview: false };
+    }
+
+    // If forceReprocess and exists, delete the old record first
+    if (existing && this.options.forceReprocess) {
+      await prisma.processedMessage.delete({
+        where: { id: existing.id },
+      });
     }
 
     // Classify the message
