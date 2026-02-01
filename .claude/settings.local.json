@@ -24,7 +24,8 @@
       "Bash(vercel whoami:*)",
       "Bash(vercel:*)",
       "Bash(curl:*)",
-      "Bash(npx prisma db pull:*)"
+      "Bash(npx prisma db pull:*)",
+      "Bash(openssl rand:*)"
     ]
   }
 }
