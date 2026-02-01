@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,13 +11,17 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   let dbStatus = 'unknown';
   let userCount = 0;
+  let dbError = '';
 
   try {
-    // Test database connection
+    // Create a new Prisma instance directly
+    const prisma = new PrismaClient();
     userCount = await prisma.user.count();
+    await prisma.$disconnect();
     dbStatus = 'connected';
   } catch (error: any) {
-    dbStatus = `error: ${error.message}`;
+    dbError = error.message || String(error);
+    dbStatus = 'error';
   }
 
   return NextResponse.json({
@@ -26,9 +30,11 @@ export async function GET() {
     database: {
       status: dbStatus,
       userCount,
+      error: dbError || undefined,
     },
     env: {
       hasDbUrl: !!process.env.DATABASE_URL,
+      dbUrlPrefix: process.env.DATABASE_URL?.substring(0, 30) + '...',
       hasEncryptionKey: !!process.env.ENCRYPTION_KEY,
       hasFrontendUrl: !!process.env.FRONTEND_URL,
     }
