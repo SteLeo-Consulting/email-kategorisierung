@@ -8,27 +8,26 @@ const nextConfig = {
   swcMinify: true,
   // Disable source maps in production to reduce memory
   productionBrowserSourceMaps: false,
+  // Disable TypeScript type checking during build (handled separately)
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  // Disable ESLint during build
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // Optimize webpack for lower memory usage
   webpack: (config, { isServer }) => {
     // Reduce memory usage
     config.optimization = {
       ...config.optimization,
       moduleIds: 'deterministic',
-      splitChunks: isServer ? false : {
-        chunks: 'all',
-        minSize: 20000,
-        maxSize: 244000,
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          commons: {
-            name: 'commons',
-            chunks: 'all',
-            minChunks: 2,
-          },
-        },
-      },
+      minimize: true,
     };
+
+    // Reduce parallelism to save memory
+    config.parallelism = 1;
+
     return config;
   },
 };

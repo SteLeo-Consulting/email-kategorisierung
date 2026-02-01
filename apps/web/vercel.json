@@ -1,10 +1,5 @@
 {
-  "buildCommand": "NODE_OPTIONS='--max-old-space-size=3584' prisma generate && next build",
+  "buildCommand": "NODE_OPTIONS='--max-old-space-size=4096' npx prisma generate && next build",
   "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/cron/process-emails",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  "installCommand": "npm install --legacy-peer-deps"
 }
