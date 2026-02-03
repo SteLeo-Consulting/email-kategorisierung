@@ -55,3 +55,39 @@ Ersetze `DEIN-USERNAME` mit deinem GitHub Benutzernamen.
 5. Klicke **Deploy**
 
 Es wird erstmal fehlschlagen - das ist OK! Wir müssen noch die Environment Variables setzen.
+
+---
+
+## Für Claude Code: Deployment-Workflow
+
+Dieses Projekt wird automatisch über Vercel deployed, wenn Änderungen auf den `main` Branch gepusht werden.
+
+### Standard-Deployment (nach Code-Änderungen)
+
+```bash
+# 1. Änderungen stagen
+git add <geänderte-dateien>
+
+# 2. Commit erstellen
+git commit -m "Beschreibung der Änderung
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+
+# 3. Push zu GitHub (triggert automatisches Vercel Deployment)
+git push
+```
+
+### Wichtig für Claude Code
+
+- **KEIN `npm run deploy` Skript** - Deployment erfolgt automatisch via GitHub Push
+- **Vercel ist mit GitHub verbunden** - Jeder Push auf `main` triggert ein neues Deployment
+- **Build erfolgt auf Vercel** - Lokaler Build ist nicht erforderlich vor dem Deployment
+- Repository URL: https://github.com/SteLeo-Consulting/email-kategorisierung.git
+
+### Bei Build-Fehlern auf Vercel
+
+1. Prüfe die Vercel Build-Logs unter: https://vercel.com/dashboard
+2. Häufige Probleme:
+   - Fehlende Environment Variables → Im Vercel Dashboard unter Project Settings > Environment Variables setzen
+   - Prisma Client Fehler → Wird automatisch während des Vercel Builds generiert
+   - TypeScript Fehler → Lokal mit `npm run build` testen vor dem Push
