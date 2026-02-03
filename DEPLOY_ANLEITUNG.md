@@ -60,29 +60,66 @@ Es wird erstmal fehlschlagen - das ist OK! Wir müssen noch die Environment Vari
 
 ## Für Claude Code: Deployment-Workflow
 
-Dieses Projekt wird automatisch über Vercel deployed, wenn Änderungen auf den `main` Branch gepusht werden.
+Dieses Projekt ist ein **Monorepo** mit zwei separaten Vercel-Projekten:
+- **api** - Backend API (apps/api)
+- **web** - Frontend Web App (apps/web)
+
+### WICHTIG: Manuelles Deployment via Vercel CLI
+
+GitHub Push triggert KEIN automatisches Deployment! Deployment muss manuell via Vercel CLI erfolgen.
 
 ### Standard-Deployment (nach Code-Änderungen)
 
 ```bash
-# 1. Änderungen stagen
+# 1. Änderungen committen und pushen (für Versionierung)
 git add <geänderte-dateien>
-
-# 2. Commit erstellen
 git commit -m "Beschreibung der Änderung
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
-
-# 3. Push zu GitHub (triggert automatisches Vercel Deployment)
 git push
+
+# 2. API deployen (wenn API-Code geändert wurde)
+cd "C:\Users\Administrator\Desktop\Claude\Email Kategorisierung\apps\api"
+vercel --prod
+
+# 3. Web deployen (wenn Web-Code geändert wurde)
+cd "C:\Users\Administrator\Desktop\Claude\Email Kategorisierung\apps\web"
+vercel --prod
 ```
 
-### Wichtig für Claude Code
+### Welches Projekt deployen?
 
-- **KEIN `npm run deploy` Skript** - Deployment erfolgt automatisch via GitHub Push
-- **Vercel ist mit GitHub verbunden** - Jeder Push auf `main` triggert ein neues Deployment
-- **Build erfolgt auf Vercel** - Lokaler Build ist nicht erforderlich vor dem Deployment
-- Repository URL: https://github.com/SteLeo-Consulting/email-kategorisierung.git
+| Geänderte Dateien | Zu deployen |
+|-------------------|-------------|
+| `apps/api/**` | API: `cd apps/api && vercel --prod` |
+| `apps/web/**` | Web: `cd apps/web && vercel --prod` |
+| `packages/shared/**` | Beide: API und Web |
+| Beide apps | Beide deployen |
+
+### Vercel CLI Befehle
+
+```bash
+# Production Deployment
+vercel --prod
+
+# Preview Deployment (zum Testen)
+vercel
+
+# Logs anzeigen
+vercel logs <deployment-url>
+
+# Letztes Deployment erneut deployen
+vercel redeploy <deployment-url>
+```
+
+### Vercel Projekt-URLs
+
+- **API**: https://api-vert-kappa-96.vercel.app
+- **Web**: https://web-delta-blue-48.vercel.app
+
+### Repository
+
+- GitHub: https://github.com/SteLeo-Consulting/email-kategorisierung.git
 
 ### Bei Build-Fehlern auf Vercel
 
