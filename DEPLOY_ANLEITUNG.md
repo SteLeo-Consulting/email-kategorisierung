@@ -114,8 +114,8 @@ vercel redeploy <deployment-url>
 
 ### Vercel Projekt-URLs
 
-- **API**: https://api-vert-kappa-96.vercel.app
-- **Web**: https://web-delta-blue-48.vercel.app
+- **API (emailcat-api)**: https://emailcat-api.vercel.app
+- **Frontend (emailcat-frontend)**: https://emailcat-frontend.vercel.app
 
 ### Repository
 

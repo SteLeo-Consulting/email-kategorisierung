@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 
 // API URL - use environment variable or default to production API
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api-vert-kappa-96.vercel.app';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://emailcat-api.vercel.app';
 
 export function useUserEmail() {
   const [userEmail, setUserEmail] = useState<string | null>(null);

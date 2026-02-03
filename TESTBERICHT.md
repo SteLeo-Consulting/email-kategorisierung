@@ -20,8 +20,8 @@
 
 ## Deployment URLs
 
-- **Frontend:** https://web-delta-blue-48.vercel.app
-- **Backend API:** https://api-vert-kappa-96.vercel.app
+- **Frontend:** https://emailcat-frontend.vercel.app
+- **Backend API:** https://emailcat-api.vercel.app
 - **Datenbank:** Neon PostgreSQL (ep-falling-pond-ag07kf0u)
 
 ---

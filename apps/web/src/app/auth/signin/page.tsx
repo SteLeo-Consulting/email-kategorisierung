@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, ChevronDown, ChevronUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 // API URL - use environment variable or default to production API
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api-vert-kappa-96.vercel.app';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://emailcat-api.vercel.app';
 
 export default function SignInPage() {
   const router = useRouter();
